@@ -118,6 +118,19 @@ SECOND_TRADING_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
 ])
 
+# 체인 텍스트
+CHAIN_TEXT = "{chain_name}에서 거래를 시작합니다!"
+
+# 체인 선택 > 버튼
+HASHKEY_BUTTON = "Hashkey Chain"
+ETHEREUM_BUTTON = "Ethereum"
+
+# 체인 선택 인라인 키보드 구성
+CHAIN_MARKUP = InlineKeyboardMarkup([
+    [InlineKeyboardButton(HASHKEY_BUTTON, callback_data=HASHKEY_BUTTON)],
+    [InlineKeyboardButton(ETHEREUM_BUTTON, callback_data=ETHEREUM_BUTTON)]
+])
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -168,7 +181,15 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # 이하 각 명령어를 처리할 함수들
 async def trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("{Chain name}에서 거래를 시작합니다!")
+    # 유저 이름 (없으면 'Hashkey'로 대체)
+    chain_name = context.user_data["selected_chain"] or HASHKEY_BUTTON
+    # 안내 문구에 체인 이름 삽입
+    text_to_send = CHAIN_TEXT.format(chain_name=chain_name)
+
+    await update.message.reply_text(
+        text=text_to_send,
+        parse_mode=ParseMode.HTML
+    )
     await update.message.reply_text(
         text=FIRST_TRADING,
         parse_mode=ParseMode.HTML,
@@ -202,35 +223,43 @@ async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("지갑 연결 기능을 실행합니다!")
 
 async def chain(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("체인 선택 기능을 실행합니다!")
+    # await update.message.reply_text("체인 선택 기능을 실행합니다!")
+    # await update.message.reply_text(
+    #     text="⛓️ 체인 선택",
+    #     parse_mode=ParseMode.HTML,
+    #     reply_markup=CHAIN_MARKUP,
+    # )
+    # 디폴트 선택은 Hashkey Chain
+    if "selected_chain" not in context.user_data:
+        context.user_data["selected_chain"] = HASHKEY_BUTTON
+    markup = get_chain_markup(context.user_data["selected_chain"])
+    await update.message.reply_text(
+        text="⛓️ 체인 선택",
+        parse_mode=ParseMode.HTML,
+        reply_markup=markup
+    )
 
-# async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     # update.message가 없으면 callback_query.message 사용
-#     message = update.message if update.message else update.callback_query.message
-#     await message.reply_text(
-#         FIRST_MENU,
-#         parse_mode=ParseMode.HTML,
-#         reply_markup=FIRST_MENU_MARKUP
-#     )
+# 선택 상태에 따른 체인 선택 인라인 키보드 생성
+def get_chain_markup(selected: str):
+    hashkey_text = f"✅ {HASHKEY_BUTTON}" if selected == HASHKEY_BUTTON else HASHKEY_BUTTON
+    ethereum_text = f"✅ {ETHEREUM_BUTTON}" if selected == ETHEREUM_BUTTON else ETHEREUM_BUTTON
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(hashkey_text, callback_data=HASHKEY_BUTTON)],
+        [InlineKeyboardButton(ethereum_text, callback_data=ETHEREUM_BUTTON)]
+    ])
 
-# async def button_tap(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     query = update.callback_query
-#     await query.answer()
+async def chain_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    if data in [HASHKEY_BUTTON, ETHEREUM_BUTTON]:
+        # 선택 상태 업데이트
+        context.user_data["selected_chain"] = data
+        updated_markup = get_chain_markup(data)
+        # 인라인 키보드 업데이트 (텍스트에 ✅ 이모지 추가)
+        await query.edit_message_reply_markup(reply_markup=updated_markup)
 
-#     if query.data == NEXT_BUTTON:
-#         await query.edit_message_text(
-#             SECOND_MENU,
-#             parse_mode=ParseMode.HTML,
-#             reply_markup=SECOND_MENU_MARKUP
-#         )
-#     elif query.data == BACK_BUTTON:
-#         await query.edit_message_text(
-#             FIRST_MENU,
-#             parse_mode=ParseMode.HTML,
-#             reply_markup=FIRST_MENU_MARKUP
-#         )
-
-# 하단 버튼을 눌렀을 때(= 텍스트가 전송됐을 때) 처리할 로직
+# 텍스트가 전송됐을 때 처리할 로직
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global screaming
 
@@ -275,6 +304,8 @@ async def main():
 
     # 트레이딩 인라인 버튼 처리: BUY와 SELL
     app.add_handler(CallbackQueryHandler(trading_button_handler, pattern='^(📈 Buy|📉 Sell)$'))
+    # 체인 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(chain_callback_handler, pattern=f'^({HASHKEY_BUTTON}|{ETHEREUM_BUTTON})$'))
 
     # app.add_handler(CallbackQueryHandler(button_tap, pattern='^(Next|Back|Tutorial)$'))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
