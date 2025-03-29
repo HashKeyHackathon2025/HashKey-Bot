@@ -35,6 +35,10 @@ token_ticker = "GYU"
 balance = 616
 token_amount = 0
 tx_hash = "0x00000"
+asset_num = 1
+asset_name = "HSK"
+asset_value = 0.01
+asset_pnl = 5
 
 # 안내 문구
 WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
@@ -389,7 +393,6 @@ async def send_token_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["send_token_message_id"] = sent_msg.message_id
     context.user_data["send_token_per"] = 25
 
-#########################
 # 인라인 키보드 생성 함수 (전송할 지갑주소 세팅, HSK 수량 선택용)
 def get_wallet_and_token_per_markup(selected: str, custom_input: str = None, custom_wallet: str = None):
     HSK_25per_text = f"✅ {HSK_25PER_BUTTON}" if selected == HSK_25PER_BUTTON else HSK_25PER_BUTTON
@@ -466,7 +469,20 @@ async def complete_send_token_handler(update: Update, context: ContextTypes.DEFA
         text=complete_text,
         parse_mode=ParseMode.HTML
     )
-#########################
+
+# 자산 현황
+async def current_asset_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    text_to_send = CURRENT_ASSET.format(asset_num=asset_num, asset_name=asset_name, asset_value=asset_value, asset_pnl=asset_pnl)
+
+    # CURRENT_ASSET 메시지 전송
+    sent_msg = await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=text_to_send,
+        parse_mode=ParseMode.HTML,
+    )
 
 async def chain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 디폴트 선택은 Hashkey Chain
@@ -661,6 +677,8 @@ async def main():
     app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
     # COMPLETE_SEND_TOKEN_BUTTON 처리: 버튼을 누르면 COMPLETE_SEND_TOKEN 출력
     app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
+    # 지갑연결 - 자산 현황
+    app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
