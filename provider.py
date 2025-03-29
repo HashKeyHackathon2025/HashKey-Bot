@@ -1,6 +1,5 @@
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
-from eth_account.middleware import signing
+from eth_account import Account
 import os
 from dotenv import load_dotenv
 import json
@@ -14,60 +13,47 @@ HASHKEY_RPC_URL = os.getenv("HASHKEY_RPC_URL")
 SEPOLIA_RPC_URL = os.getenv("SEPOLIA_RPC_URL")
 
 class Web3Provider:
-    def __init__(self):
-        # Hashkey provider init
-        self.hashkey_w3 = Web3(Web3.HTTPProvider(HASHKEY_RPC_URL))
-        self.hashkey_w3.middleware_onion.add(geth_poa_middleware)
+    def __init__(self, rpc_url: str, private_key: str = None):
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self.account = Account.from_key(private_key) if private_key else None
+
+    def get_contract(self, address: str, abi_path: str):
+        with open(abi_path, 'r') as f :
+            abi = json.load(f)
+        return self.w3.eth.contract(address=address, abi=abi['abi'])
+
+    def send_transaction(self, transaction) :
+        if not self.account :
+            raise ValueError("Private key not provided")
         
-        # Sepolia provider init
-        self.sepolia_w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC_URL))
-        self.sepolia_w3.middleware_onion.add(geth_poa_middleware)
-
-        self.contract_abis = {}
-        self.contracts = {}
-
-        self.load_contract_abi('CORE', './abi/core.json')
-        self.load_contract_abi('ACCOUNT_IMPL', './abi/accountImpl.json')
-
-
-    def load_contract_abi(self, contract_name: str, abi_path: str):
-        with open(abi_path, 'r') as f:
-            self.contract_abis[contract_name] = json.loads(f.read())
-
-    def get_contract(self, network: str, contract_name: str, contract_address: str):
-        contract_key = f"{network}_{contract_name}_{contract_address}"
-        
-        if contract_key in self.contracts:
-            return self.contracts[contract_key]
-            
-        if contract_name not in self.contract_abis:
-            raise ValueError(f"Contract ABI for {contract_name} not loaded")
-            
-        w3 = self.get_provider(network)
-        contract = w3.eth.contract(
-            address=contract_address,
-            abi=self.contract_abis[contract_name]
-        )
-        
-        self.contracts[contract_key] = contract
-        return contract
-
-    def get_provider(self, network: str) -> Web3:
-        if network.upper() == "HASHKEY":
-            return self.hashkey_w3
-        elif network.upper() == "SEPOLIA":
-            return self.sepolia_w3
-        else:
-            raise ValueError("not supported network")
+        if 'nonce' not in transaction :
+            transaction['nonce'] = self.w3.eth.get_transaction_count(self.account.address)
+        if 'gasPrice' not in transaction:
+            transaction['gasPrice'] = self.w3.eth.gas_price    
          
+        # 트랜잭션 서명
+        signed_txn = self.w3.eth.account.sign_transaction(transaction, self.account.key)
+        
+        # 트랜잭션 전송
+        tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        
+        # 트랜잭션 영수증 대기 및 반환
+        return self.w3.eth.wait_for_transaction_receipt(tx_hash)
+    
+    def is_connected(self):
+        return self.w3.is_connected()
+    
+    def get_balance(self, address: str):
+        return self.w3.eth.get_balance(address)
+
     # 사용자 지갑 주소 반환        
-    async def get_account_address(self, network: str, telegram_id: str) -> str :
-        contract = self.get_contract(
-            network=network,
-            contract_name='CORE', 
-            contract_address=CONTRACTS[f"{network.upper()}_CORE"]
-        )
-        return contract.functions.getAccountAddress(telegram_id).call()
+    # async def get_account_address(self, network: str, telegram_id: str) -> str :
+    #     contract = self.get_contract(
+    #         network=network,
+    #         contract_name='CORE', 
+    #         contract_address=CONTRACTS[f"{network.upper()}_CORE"]
+    #     )
+    #     return contract.functions.getAccountAddress(telegram_id).call()
         
     # # 사용자 지갑 생성
     # async def create_account_address(self, network: str, telegram_id) :
