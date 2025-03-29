@@ -31,10 +31,15 @@ logger = logging.getLogger(__name__)
 # 임시 변수
 wallet_address = "0x3ff0908E1891BE439658ca15387C000D5c7921C1"
 wallet_HSK_balance = 0.0
-token_name = "gyuseon"
-token_ticker = "GYU"
-send_token_amount = 0.1
-balance = 616
+token_address = "0xba946A82D6c13A9DE94551feFDc1E05F92c6aF8d"
+token_name = "Test Wrapped HSK"
+token_ticker = "WHSK"
+token_price = 1.0
+token_market_cap = "120,000,000"
+token_24h_volume = "40,000,237"
+send_token_amount = 1.0
+gas_fee = 0.00
+token_balance = 10
 token_amount = 0
 wallet_tx_hash = "0x656710Bd0B06D5D6836816c961CF984BeCa4f554"
 weth_balance = 20.0
@@ -72,11 +77,11 @@ screaming = False
 # 트레이딩 텍스트
 TRADING_TEXT = "Starting trading on {chain_name}!"
 FIRST_TRADING = """🔄 Trading\n
-1️⃣ My wallet address:
-2️⃣ Wallet balance:
-3️⃣ HSK balance:
-4️⃣ Gas fee:
-5️⃣ Mainnet: Hashkey Chain
+1️⃣ My wallet address: """ + wallet_address + """
+2️⃣ Wallet balance: """ + str(token_balance) + """ HSK
+3️⃣ HSK balance: """ + str(token_balance) + """ HSK
+4️⃣ Gas fee: """ + str(gas_fee) + """ HSK (&lt; 0.1 Gwei)
+5️⃣ Mainnet: <a href="https://global.hashkey.com/en-US/">Hashkey Chain</a>\n
 ⛓️ <a href="https://hashkey.blockscout.com/">Explorer</a> | ⛓️ <a href="https://debank.com/">DeBank</a>
 
 """
@@ -86,12 +91,12 @@ Please enter the contract address of the token you want to purchase.
 SELL_TRADING = """
 Please enter the contract address of the token you want to sell.
 """
-SECOND_TRADING = """Token Name: {token_name}
-Token Ticker: {token_ticker}
+SECOND_TRADING = """Token Name: """ + token_name + """
+Token Ticker: """ + token_ticker + """
 
-1️⃣ Token Price: 
-2️⃣ Market Cap:
-3️⃣ 24-hour Trading Volume:
+1️⃣ Token Price: """ + str(token_price) + """ HSK
+2️⃣ Market Cap: """ + token_market_cap + """ HSK
+3️⃣ 24-hour Trading Volume: """ + token_24h_volume + """ HSK
 
 ⛓️ DEX Screener | ⛓️ Gecko Terminal
 
@@ -110,7 +115,7 @@ HSK_10_BUTTON = "10 HSK"
 HSK_100_BUTTON = "100 HSK"
 HSK_1000_BUTTON = "1,000 HSK"
 MAX_AMOUNT_BUTTON = "Set maximum amount"
-SET_MAX_AMOUNT_BUTTON = "Maximum amount: 616 HSK"
+SET_MAX_AMOUNT_BUTTON = "Maximum amount: " + str(token_balance) + " HSK"
 INPUT_TRADING_AMOUNT_BUTTON = "Manual entry:"
 INPUT_SLIPPAGE_BUTTON = "✅ Slippage setting: 0.5%"
 COMPLETE_TRADING_BUTTON = "✅ Trading Setup Complete"
@@ -199,7 +204,7 @@ SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
 # 브릿지 텍스트
 BRIDGE_TEXT = "🔄 Transfer your assets from Ethereum mainnet to Hashkey chain mainnet."
 COMPLETE_BRIDGE = """
-{token_amount} WETH has been transferred from Ethereum mainnet to Hashkey mainnet!\n
+{weth_amount} WETH has been transferred from Ethereum mainnet to Hashkey mainnet!\n
 
 Transaction Hash:
 {bridge_tx_hash}
@@ -390,10 +395,10 @@ async def trading_buy_amount_callback_handler(update: Update, context: ContextTy
         elif data == HSK_1000_BUTTON:
             numeric_value = 1000
         elif data == MAX_AMOUNT_BUTTON:
-            numeric_value = balance  # 미리 정의된 balance 변수 사용
+            numeric_value = token_balance  # 미리 정의된 balance 변수 사용
         # 단일 변수에 숫자값 저장
         context.user_data["trading_buy_amount"] = str(numeric_value)
-        updated_markup = get_trading_buy_amount_markup(data, custom_slippage=context.user_data.get("trading_slippage"))
+        updated_markup = get_trading_buy_amount_markup(data)
         await query.edit_message_reply_markup(reply_markup=updated_markup)
     else:
         # 기타 경우는 별도 처리 (필요하면)
@@ -403,7 +408,7 @@ async def complete_buy_trading_handler(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
     # COMPLETE_BUY_TRADING 텍스트에 token_name과 amount 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_BUY_TRADING.format(trading_buy_amount=context.user_data["trading_buy_amount"],token_name=token_name, amount=0.0)
+    complete_text = COMPLETE_BUY_TRADING.format(trading_buy_amount=context.user_data["trading_buy_amount"],token_name=token_name, amount=9.8)
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
@@ -480,7 +485,7 @@ async def complete_bridge_handler(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     # COMPLETE_BRIDGE 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_BRIDGE.format(token_amount=weth_amount,bridge_tx_hash=bridge_tx_hash)
+    complete_text = COMPLETE_BRIDGE.format(weth_amount=weth_amount,bridge_tx_hash=bridge_tx_hash)
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
@@ -666,9 +671,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trading_msg_id = context.user_data.get("trading_message_id")
         if trading_msg_id:
             new_markup = get_trading_buy_amount_markup(
-                INPUT_TRADING_AMOUNT_BUTTON,
+                "",
                 custom_input=user_text,
-                custom_slippage=context.user_data.get("trading_slippage")
+                custom_slippage=""
             )
             try:
                 await context.bot.edit_message_reply_markup(
@@ -691,8 +696,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trading_msg_id = context.user_data.get("trading_message_id")
         if trading_msg_id:
             new_markup = get_trading_buy_amount_markup(
-                INPUT_TRADING_AMOUNT_BUTTON,
-                custom_input=context.user_data.get("trading_buy_amount"),
+                MAX_AMOUNT_BUTTON,
+                custom_input="",
                 custom_slippage=user_text
             )
             try:
@@ -758,7 +763,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # 만약 "Buy 모드" 상태라면, 입력값 검증 후 SECOND_TRADING 출력
     if context.user_data.get("waiting_for_buy_input", False):
-        if user_text == "test":
+        if user_text == token_address:
             if "trading_buy_amount" not in context.user_data:
                 context.user_data["trading_buy_amount"] = HSK_10_BUTTON
             sent_trading = await update.message.reply_text(
@@ -773,7 +778,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_buy_input"] = False
         return
     elif context.user_data.get("waiting_for_sell_input", False):
-        if user_text == "test":
+        if user_text == token_address:
             sent_trading = await update.message.reply_text(
                 text=SECOND_TRADING,
                 parse_mode=ParseMode.HTML,
