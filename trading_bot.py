@@ -279,6 +279,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
 
+async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 등록할 지갑 주소를 입력하라는 프롬프트 메시지 전송
+    await update.message.reply_text("등록할 지갑 주소를 입력해주세요:")
+    # 이후 사용자의 입력을 기다리기 위한 플래그 설정
+    context.user_data["waiting_for_register"] = True
+
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global screaming
     if not update.message:
@@ -293,16 +299,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await update.message.copy(chat_id=update.message.chat_id)
-
-async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    await context.bot.send_message(
-        chat_id=query.message.chat.id,
-        text="등록할 지갑 주소를 입력해주세요:",
-        parse_mode=ParseMode.HTML
-    )
 
 async def trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 체인 이름 (없으면 'Hashkey'로 대체)
@@ -499,8 +495,6 @@ async def complete_bridge_handler(update: Update, context: ContextTypes.DEFAULT_
         text=complete_text,
         parse_mode=ParseMode.HTML
     )
-##########################
-
 
 async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -653,6 +647,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 사용자가 입력(또는 버튼 클릭)한 텍스트
     user_text = update.message.text
 
+    # 지갑 등록 입력 처리
+    if context.user_data.get("waiting_for_register", False):
+        context.user_data["user_EOA"] = update.message.text.strip()
+        context.user_data["waiting_for_register"] = False
+        await update.message.reply_text("지갑 주소가 등록되었습니다!")
+        return
+
     # 구매 수량 직접 입력 처리
     if context.user_data.get("waiting_for_trading_amount_input", False):
         # 직접 입력한 값을 저장 (단일 변수로 관리)
@@ -789,11 +790,13 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     
     # 안내문에 써놓은 명령어들에 대한 핸들러들
+    app.add_handler(CommandHandler("register", register))
     app.add_handler(CommandHandler("trading", trading))
     app.add_handler(CommandHandler("wallet", wallet))
     app.add_handler(CommandHandler("bridge", bridge))
     app.add_handler(CommandHandler("chain", chain))
 
+    ########### 지갑연결 ##############
     # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
     # 지갑연결 - 토큰 전송
@@ -803,16 +806,19 @@ async def main():
     # 지갑연결 - 자산 현황
     app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
 
-
-    # 트레이딩 인라인 버튼 처리: BUY와 SELL
-    app.add_handler(CallbackQueryHandler(trading_button_handler, pattern='^(📈 Buy|📉 Sell)$'))
+    ########### 체인선택 ##############
     # 체인 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(chain_callback_handler, pattern=f'^({HASHKEY_BUTTON}|{ETHEREUM_BUTTON})$'))
+
+    ########### 트레이딩 ##############
+    # 트레이딩 인라인 버튼 처리: BUY와 SELL
+    app.add_handler(CallbackQueryHandler(trading_button_handler, pattern='^(📈 Buy|📉 Sell)$'))
     # 트레이딩 - 구매할 HSK 수량 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
     # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
     app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
 
+    ########### 브릿지 ##############
     # 브릿지 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
     # 브릿지
