@@ -37,8 +37,9 @@ send_token_amount = 0.1
 balance = 616
 token_amount = 0
 wallet_tx_hash = "0x656710Bd0B06D5D6836816c961CF984BeCa4f554"
-weth_amount = 0.00000
-bridge_tx_hash = "0xbridgeHash"
+weth_balance = 20.0
+weth_amount = 10.0
+bridge_tx_hash = "0x8bddb64ec9bfcd9a8538b939c944d3ffdb5be058ad82d710f10fbbdebe8e2c50"
 
 # 안내 문구
 WELCOME_TEXT = """Welcome to KeyBot {username}!
@@ -210,8 +211,8 @@ SET_FROM_MAINNET_BUTTON = "✅ Ethereum"
 INFO_TO_MAINNET_BUTTON = "2️⃣ Set up destination mainnet"
 SET_TO_MAINNET_BUTTON = "✅ Hashkey Chain"
 INFO_SELECT_ASSET_BUTTON = "3️⃣ Select asset"
-SET_ASSET_BUTTON = "WETH"
-INFO_ASSET_BALANCE_BUTTON = "{weth_amount} WETH available"
+SET_ASSET_BUTTON = "✅ WETH"
+INFO_ASSET_BALANCE_BUTTON = str(weth_balance) + " WETH available"
 WETH_25PER_BUTTON = " 25% "
 WETH_50PER_BUTTON = " 50% "
 WETH_75PER_BUTTON = " 75% "
