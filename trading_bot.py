@@ -33,6 +33,8 @@ wallet_address = "0x7896Dfb8f8Ef9e36BA37ACB111AaE3D704dbc51Ed"
 token_name = "gyuseon"
 token_ticker = "GYU"
 balance = 616
+token_amount = 0
+tx_hash = "0x00000"
 
 # 안내 문구
 WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
@@ -103,7 +105,7 @@ MAX_AMOUNT_BUTTON = "최대 수량 설정"
 SET_MAX_AMOUNT_BUTTON = "최대 수량: 616 HSK"
 INPUT_TRADING_AMOUNT_BUTTON = "직접 입력:"
 INPUT_SLIPPAGE_BUTTON = "✅ 슬리피지 설정: 0.5%"
-COMPLETE_BUTTON = "✅ 설정 완료"
+COMPLETE_TRADING_BUTTON = "✅ 설정 완료"
 
 # 트레이딩 인라인 키보드 구성
 FIRST_TRADING_MARKUP = InlineKeyboardMarkup([
@@ -118,7 +120,7 @@ BUY_TRADING_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(MAX_AMOUNT_BUTTON, callback_data=MAX_AMOUNT_BUTTON),
      InlineKeyboardButton(INPUT_TRADING_AMOUNT_BUTTON, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
     [InlineKeyboardButton(INPUT_SLIPPAGE_BUTTON, callback_data=INPUT_SLIPPAGE_BUTTON)],
-    [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
+    [InlineKeyboardButton(COMPLETE_TRADING_BUTTON, callback_data=COMPLETE_TRADING_BUTTON)],
 ])
 SELL_TRADING_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(INFO_SELL_AMOUNT_BUTTON, callback_data=INFO_SELL_AMOUNT_BUTTON)],
@@ -128,7 +130,7 @@ SELL_TRADING_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(MAX_AMOUNT_BUTTON, callback_data=MAX_AMOUNT_BUTTON),
      InlineKeyboardButton(INPUT_TRADING_AMOUNT_BUTTON, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
     [InlineKeyboardButton(INPUT_SLIPPAGE_BUTTON, callback_data=INPUT_SLIPPAGE_BUTTON)],
-    [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
+    [InlineKeyboardButton(COMPLETE_TRADING_BUTTON, callback_data=COMPLETE_TRADING_BUTTON)],
 ])
 
 # 체인 텍스트
@@ -142,6 +144,57 @@ ETHEREUM_BUTTON = "Ethereum"
 CHAIN_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(HASHKEY_BUTTON, callback_data=HASHKEY_BUTTON)],
     [InlineKeyboardButton(ETHEREUM_BUTTON, callback_data=ETHEREUM_BUTTON)]
+])
+
+# 지갑 설정 텍스트
+WALLET_TEXT = """👛 지갑 설정\n
+1️⃣ 지갑 주소:
+2️⃣ HSK 잔고:
+3️⃣ 지갑 전체 잔고:\n
+⛓️ <a href="https://hashkey.blockscout.com/">Explorer 연결</a>
+⛓️ <a href="https://debank.com/">DeBank 연결</a>
+
+"""
+SEND_TOKEN = """🔄 토큰 전송
+KeyBot이 생성한 지갑에 있는 HSK를 다른 지갑으로 전송합니다.
+"""
+CURRENT_ASSET = """🪙 자산 현황
+{asset_num}. {asset_name} | Value: ${asset_value} | PNL: {asset_pnl}%
+"""
+COMPLETE_SEND_TOKEN = """{wallet_address}로 {token_amount} HSK를 전송했습니다!\n
+트랜잭션 해시:
+{tx_hash}
+"""
+
+# 지갑 설정 > 버튼
+SEND_TOKEN_BUTTON = "🔄 토큰 전송"
+ASSET_BUTTON = "🪙 자산 현황"
+
+INFO_WALLET_ADDRESS_BUTTON = "1️⃣ HSK 전송할 지갑 주소 입력"
+INPUT_WALLET_ADDRESS_BUTTON = "지갑 주소를 입력해주세요:"
+INFO_SEND_PER_BUTTON = "2️⃣ 전송할 HSK 수량 선택"
+HSK_25PER_BUTTON = "25%"
+HSK_50PER_BUTTON = "50%"
+HSK_75PER_BUTTON = "75%"
+HSK_100PER_BUTTON = "100%"
+INPUT_HSK_PER_BUTTON = "직접 입력:"
+COMPLETE_SEND_TOKEN_BUTTON = "✅ 토큰 설정 완료"
+
+# 지갑 설정 인라인 키보드 구성
+WALLET_MARKUP = InlineKeyboardMarkup([
+    [InlineKeyboardButton(SEND_TOKEN_BUTTON, callback_data=SEND_TOKEN_BUTTON)],
+    [InlineKeyboardButton(ASSET_BUTTON, callback_data=ASSET_BUTTON)]
+])
+SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
+    [InlineKeyboardButton(INFO_WALLET_ADDRESS_BUTTON, callback_data=INFO_WALLET_ADDRESS_BUTTON)],
+    [InlineKeyboardButton(INPUT_WALLET_ADDRESS_BUTTON, callback_data=INPUT_WALLET_ADDRESS_BUTTON)],
+    [InlineKeyboardButton(INFO_SEND_PER_BUTTON, callback_data=INFO_SEND_PER_BUTTON)],
+    [InlineKeyboardButton(HSK_25PER_BUTTON, callback_data=HSK_25PER_BUTTON),
+     InlineKeyboardButton(HSK_50PER_BUTTON, callback_data=HSK_50PER_BUTTON),
+     InlineKeyboardButton(HSK_75PER_BUTTON, callback_data=HSK_75PER_BUTTON)],
+    [InlineKeyboardButton(HSK_100PER_BUTTON, callback_data=HSK_100PER_BUTTON),
+     InlineKeyboardButton(INPUT_HSK_PER_BUTTON, callback_data=INPUT_HSK_PER_BUTTON)],
+    [InlineKeyboardButton(COMPLETE_SEND_TOKEN_BUTTON, callback_data=COMPLETE_SEND_TOKEN_BUTTON)]
 ])
 
 
@@ -209,6 +262,8 @@ async def trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=FIRST_TRADING_MARKUP,
         disable_web_page_preview=True
     )
+
+    context.user_data["trading_slippage"] = 0.5
     
 # 트레이딩 인라인 버튼(📈 Buy, 📉 Sell) 처리
 async def trading_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -238,7 +293,7 @@ def get_trading_buy_amount_markup(selected: str, custom_input: str = None, custo
     HSK_10_text = f"✅ {HSK_10_BUTTON}" if selected == HSK_10_BUTTON else HSK_10_BUTTON
     HSK_100_text = f"✅ {HSK_100_BUTTON}" if selected == HSK_100_BUTTON else HSK_100_BUTTON
     HSK_1000_text = f"✅ {HSK_1000_BUTTON}" if selected == HSK_1000_BUTTON else HSK_1000_BUTTON
-    max_amount_text = f"✅ {MAX_AMOUNT_BUTTON}" if selected == MAX_AMOUNT_BUTTON else MAX_AMOUNT_BUTTON
+    max_amount_text = f"✅ {SET_MAX_AMOUNT_BUTTON}" if selected == MAX_AMOUNT_BUTTON else MAX_AMOUNT_BUTTON
     if custom_input:
         input_trading_amount_text = f"✅ {INPUT_TRADING_AMOUNT_BUTTON} {custom_input} HSK"
     else:
@@ -255,7 +310,7 @@ def get_trading_buy_amount_markup(selected: str, custom_input: str = None, custo
         [InlineKeyboardButton(max_amount_text, callback_data=MAX_AMOUNT_BUTTON),
          InlineKeyboardButton(input_trading_amount_text, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
         [InlineKeyboardButton(slippage_text, callback_data=INPUT_SLIPPAGE_BUTTON)],
-        [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
+        [InlineKeyboardButton(COMPLETE_TRADING_BUTTON, callback_data=COMPLETE_TRADING_BUTTON)],
     ])
 
 # 선택한 token amount에 체크
@@ -313,7 +368,105 @@ async def bridge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("브릿지 기능을 실행합니다!")
 
 async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("지갑 연결 기능을 실행합니다!")
+    await update.message.reply_text(
+        text=WALLET_TEXT,
+        parse_mode=ParseMode.HTML,
+        reply_markup=WALLET_MARKUP,
+        disable_web_page_preview=True
+    )
+
+async def send_token_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    # SEND_TOKEN 메시지 전송
+    sent_msg = await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=SEND_TOKEN,
+        parse_mode=ParseMode.HTML,
+        reply_markup=SEND_TOKEN_MARKUP
+    )
+    # 메시지 ID를 저장 (이후 지갑 주소 입력 업데이트에 사용)
+    context.user_data["send_token_message_id"] = sent_msg.message_id
+    context.user_data["send_token_per"] = 25
+
+#########################
+# 인라인 키보드 생성 함수 (전송할 지갑주소 세팅, HSK 수량 선택용)
+def get_wallet_and_token_per_markup(selected: str, custom_input: str = None, custom_wallet: str = None):
+    HSK_25per_text = f"✅ {HSK_25PER_BUTTON}" if selected == HSK_25PER_BUTTON else HSK_25PER_BUTTON
+    HSK_50per_text = f"✅ {HSK_50PER_BUTTON}" if selected == HSK_50PER_BUTTON else HSK_50PER_BUTTON
+    HSK_75per_text = f"✅ {HSK_75PER_BUTTON}" if selected == HSK_75PER_BUTTON else HSK_75PER_BUTTON
+    HSK_100per_text = f"✅ {HSK_100PER_BUTTON}" if selected == HSK_100PER_BUTTON else HSK_100PER_BUTTON
+    if custom_input:
+        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} %"
+    else:
+        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
+    if custom_wallet:
+        input_wallet_address_text = f"✅ {custom_wallet}"
+    else:
+        input_wallet_address_text = f"✅ {INPUT_WALLET_ADDRESS_BUTTON}" if selected == INPUT_WALLET_ADDRESS_BUTTON else INPUT_WALLET_ADDRESS_BUTTON
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(INFO_WALLET_ADDRESS_BUTTON, callback_data=INFO_WALLET_ADDRESS_BUTTON)],
+        [InlineKeyboardButton(input_wallet_address_text, callback_data=INPUT_WALLET_ADDRESS_BUTTON)],
+        [InlineKeyboardButton(INFO_SEND_PER_BUTTON, callback_data=INFO_SEND_PER_BUTTON)],
+        [InlineKeyboardButton(HSK_25per_text, callback_data=HSK_25PER_BUTTON),
+         InlineKeyboardButton(HSK_50per_text, callback_data=HSK_50PER_BUTTON),
+         InlineKeyboardButton(HSK_75per_text, callback_data=HSK_75PER_BUTTON)],
+        [InlineKeyboardButton(HSK_100per_text, callback_data=HSK_100PER_BUTTON),
+        InlineKeyboardButton(input_HSK_per_text, callback_data=INPUT_HSK_PER_BUTTON)],
+        [InlineKeyboardButton(COMPLETE_SEND_TOKEN_BUTTON, callback_data=COMPLETE_SEND_TOKEN_BUTTON)]
+    ])
+
+# 선택한 token per에 체크
+async def send_wallet_and_token_per_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    if data == INPUT_HSK_PER_BUTTON:
+        # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text="전송할 HSK 수량을 입력해주세요:",
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_send_token_amount_input"] = True
+        context.user_data["send_token_prompt_message_id"] = msg.message_id
+    elif data == INPUT_WALLET_ADDRESS_BUTTON:
+        # 지갑 주소 입력 처리
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text="KeyBot 지갑에서 HSK를 전송받을 지갑 주소를 입력해주세요:",
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_wallet_address_input"] = True
+        context.user_data["wallet_address_prompt_message_id"] = msg.message_id
+    elif data in [HSK_25PER_BUTTON, HSK_50PER_BUTTON, HSK_75PER_BUTTON, HSK_100PER_BUTTON]:
+        if data == HSK_25PER_BUTTON:
+            numeric_value = 25
+        elif data == HSK_50PER_BUTTON:
+            numeric_value = 50
+        elif data == HSK_75PER_BUTTON:
+            numeric_value = 75
+        elif data == HSK_100PER_BUTTON:
+            numeric_value = 100
+        # 단일 변수에 숫자값 저장
+        context.user_data["send_token_per"] = str(numeric_value)
+        updated_markup = get_wallet_and_token_per_markup(data, custom_wallet=context.user_data.get("send_wallet_address"))
+        await query.edit_message_reply_markup(reply_markup=updated_markup)
+    else:
+        # 기타 경우는 별도 처리 (필요하면)
+        pass
+
+async def complete_send_token_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    # COMPLETE_SEND_TOKEN 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
+    complete_text = COMPLETE_SEND_TOKEN.format(wallet_address=context.user_data["send_wallet_address"],token_amount=token_amount, tx_hash=tx_hash)
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=complete_text,
+        parse_mode=ParseMode.HTML
+    )
+#########################
 
 async def chain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 디폴트 선택은 Hashkey Chain
@@ -404,6 +557,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_slippage_input"] = False
         return
     
+    # 지갑 주소 직접 입력 처리
+    if context.user_data.get("waiting_for_wallet_address_input", False):
+        context.user_data["send_wallet_address"] = user_text  # 지갑 주소 값 저장 (예: "0x00000")
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        send_token_msg_id = context.user_data.get("send_token_message_id")
+        if send_token_msg_id:
+            new_markup = get_wallet_and_token_per_markup(
+                INPUT_WALLET_ADDRESS_BUTTON,
+                custom_input=context.user_data.get("send_token_per"),
+                custom_wallet=user_text
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=send_token_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_wallet_address_input"] = False
+        return
+    
     # 만약 "Buy 모드" 상태라면, 입력값 검증 후 SECOND_TRADING 출력
     if context.user_data.get("waiting_for_buy_input", False):
         if user_text == "test":
@@ -475,9 +653,15 @@ async def main():
     app.add_handler(CallbackQueryHandler(chain_callback_handler, pattern=f'^({HASHKEY_BUTTON}|{ETHEREUM_BUTTON})$'))
     # 트레이딩 - 구매할 HSK 수량 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
-    # COMPLETE_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
-    app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_BUTTON}$'))
-    
+    # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
+    app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
+    # 지갑연결 - 토큰 전송
+    app.add_handler(CallbackQueryHandler(send_token_handler, pattern=f'^{SEND_TOKEN_BUTTON}$'))
+    # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
+    # COMPLETE_SEND_TOKEN_BUTTON 처리: 버튼을 누르면 COMPLETE_SEND_TOKEN 출력
+    app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
+
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
     print("🤖 봇 실행 중...")
