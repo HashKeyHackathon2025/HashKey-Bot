@@ -29,29 +29,32 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 임시 변수
-wallet_address = "0x7896Dfb8f8Ef9e36BA37ACB111AaE3D704dbc51Ed"
+wallet_address = "0x3ff0908E1891BE439658ca15387C000D5c7921C1"
+wallet_HSK_balance = 0.0
 token_name = "gyuseon"
 token_ticker = "GYU"
+send_token_amount = 0.1
 balance = 616
 token_amount = 0
-tx_hash = "0xsendTokenHash"
+wallet_tx_hash = "0x656710Bd0B06D5D6836816c961CF984BeCa4f554"
 weth_amount = 0.00000
 bridge_tx_hash = "0xbridgeHash"
 
 # 안내 문구
 WELCOME_TEXT = """Welcome to KeyBot {username}!
 
-I've created a wallet address for your convenient trading: 
+I've created a wallet address for your convenient trading:\n
 <code>{wallet_address}</code>
 
-First, register your EOA with the /register function.
+First, register your EOA with the
+/register function.
 
-──────────────────
+────────────────
 - /trading Try using this feature. You can trade on Hashkey and Ethereum mainnet.
 - /wallet Click this button to check the dollar value of all tokens in your current wallet, HSK balance, current gas fees, and more.
 - /bridge Bring your assets from Ethereum to the Hashkey chain through this menu.
 - /chain Click this button and choose the chain you want to trade on.
-──────────────────
+────────────────
 
 Now click the /trading button and try using KeyBot!
 """
@@ -109,7 +112,7 @@ MAX_AMOUNT_BUTTON = "Set maximum amount"
 SET_MAX_AMOUNT_BUTTON = "Maximum amount: 616 HSK"
 INPUT_TRADING_AMOUNT_BUTTON = "Manual entry:"
 INPUT_SLIPPAGE_BUTTON = "✅ Slippage setting: 0.5%"
-COMPLETE_TRADING_BUTTON = "✅ Setup Complete"
+COMPLETE_TRADING_BUTTON = "✅ Trading Setup Complete"
 
 # 트레이딩 인라인 키보드 구성
 FIRST_TRADING_MARKUP = InlineKeyboardMarkup([
@@ -149,13 +152,13 @@ CHAIN_MARKUP = InlineKeyboardMarkup([
 
 # 지갑 설정 텍스트
 WALLET_TEXT = """👛 Wallet Settings\n
-1️⃣ Wallet Address:
-2️⃣ HSK balance:\n
+1️⃣ Wallet Address: <code>""" + str(wallet_address) + """</code>
+2️⃣ HSK balance: """ + str(wallet_HSK_balance) + """\n
 ⛓️ <a href="https://hashkey.blockscout.com/">Connect Explorer</a>
 ⛓️ <a href="https://debank.com/">Connect DeBank</a>
 
 """
-SEND_TOKEN = """🔄 Token Transfer
+SEND_TOKEN = """🔄 Claim Token
 Transfer HSK from the wallet created by KeyBot to another wallet.
 """
 COMPLETE_SEND_TOKEN = """Transferred {token_amount} HSK to {wallet_address}!\n
@@ -164,7 +167,7 @@ Transaction Hash:
 """
 
 # 지갑 설정 > 버튼
-SEND_TOKEN_BUTTON = "🔄 Token Transfer"
+SEND_TOKEN_BUTTON = "🔄 Claim Token"
 
 INFO_WALLET_ADDRESS_BUTTON = "1️⃣ Enter wallet address to transfer HSK"
 INPUT_WALLET_ADDRESS_BUTTON = "Please enter your wallet address::"
@@ -209,11 +212,11 @@ SET_TO_MAINNET_BUTTON = "✅ Hashkey Chain"
 INFO_SELECT_ASSET_BUTTON = "3️⃣ Select asset"
 SET_ASSET_BUTTON = "WETH"
 INFO_ASSET_BALANCE_BUTTON = "{weth_amount} WETH available"
-WETH_25PER_BUTTON = "25%"
-WETH_50PER_BUTTON = "50%"
-WETH_75PER_BUTTON = "75%"
-WETH_100PER_BUTTON = "100%"
-INPUT_WETH_PER_BUTTON = "Manual entry: "
+WETH_25PER_BUTTON = " 25% "
+WETH_50PER_BUTTON = " 50% "
+WETH_75PER_BUTTON = " 75% "
+WETH_100PER_BUTTON = " 100% "
+INPUT_WETH_PER_BUTTON = " Manual entry: "
 COMPLETE_BRIDGE_BUTTON = "✅ Bridge Setup Complete"
 
 # 브릿지 설정 인라인 키보드 구성
@@ -512,7 +515,7 @@ def get_wallet_and_token_per_markup(selected: str, custom_input: str = None, cus
     HSK_75per_text = f"✅ {HSK_75PER_BUTTON}" if selected == HSK_75PER_BUTTON else HSK_75PER_BUTTON
     HSK_100per_text = f"✅ {HSK_100PER_BUTTON}" if selected == HSK_100PER_BUTTON else HSK_100PER_BUTTON
     if custom_input:
-        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} %"
+        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} HSK"
     else:
         input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
     if custom_wallet:
@@ -575,7 +578,7 @@ async def complete_send_token_handler(update: Update, context: ContextTypes.DEFA
     query = update.callback_query
     await query.answer()
     # COMPLETE_SEND_TOKEN 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_SEND_TOKEN.format(wallet_address=context.user_data["send_wallet_address"],token_amount=token_amount, tx_hash=tx_hash)
+    complete_text = COMPLETE_SEND_TOKEN.format(wallet_address=context.user_data["send_wallet_address"],token_amount=context.user_data["send_token_per"], tx_hash=wallet_tx_hash)
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
@@ -712,8 +715,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         send_token_msg_id = context.user_data.get("send_token_message_id")
         if send_token_msg_id:
             new_markup = get_wallet_and_token_per_markup(
-                INPUT_WALLET_ADDRESS_BUTTON,
-                custom_input=context.user_data.get("send_token_per"),
+                "",
+                "",
                 custom_wallet=user_text
             )
             try:
@@ -725,6 +728,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"인라인 키보드 업데이트 실패: {e}")
         context.user_data["waiting_for_wallet_address_input"] = False
+        return
+    
+    # 전송 토큰 비율 직접 입력 처리
+    if context.user_data.get("waiting_for_send_token_amount_input", False):
+        context.user_data["send_token_per"] = user_text
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        send_token_msg_id = context.user_data.get("send_token_message_id")
+        if send_token_msg_id:
+            new_markup = get_wallet_and_token_per_markup(
+                INPUT_HSK_PER_BUTTON,
+                custom_input=user_text,
+                custom_wallet=context.user_data.get("send_wallet_address")
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=send_token_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_send_token_amount_input"] = False
         return
     
     # 만약 "Buy 모드" 상태라면, 입력값 검증 후 SECOND_TRADING 출력
