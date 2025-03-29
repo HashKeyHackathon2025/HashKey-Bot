@@ -1,0 +1,138 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address",
+          "indexed": false
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address",
+          "indexed": false
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false
+        }
+      ],
+      "type": "event",
+      "name": "ClaimedTokens",
+      "anonymous": false
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address",
+          "indexed": false
+        }
+      ],
+      "type": "event",
+      "name": "UserSet",
+      "anonymous": false
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "name": "claimTokens"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "connector",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "name": "connectorCall",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "name": "initialize"
+    },
+    {
+      "inputs": [],
+      "stateMutability": "view",
+      "type": "function",
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newUser",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "name": "setUser"
+    },
+    {
+      "inputs": [],
+      "stateMutability": "view",
+      "type": "function",
+      "name": "user",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "inputs": [],
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ]
+}
