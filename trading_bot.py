@@ -1,6 +1,8 @@
 import logging
 import asyncio
 import nest_asyncio
+from web3 import Web3
+
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.constants import ParseMode
@@ -475,8 +477,43 @@ async def bridge_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 async def complete_bridge_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # COMPLETE_BRIDGE 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_BRIDGE.format(token_amount=weth_amount,bridge_tx_hash=bridge_tx_hash)
+
+    try:
+        # 사용자 입력값 사용
+        telegram_id = query.from_user.id
+        token_address = context.user_data["bridge_token_address"]        # 예: "0x..." (WETH)
+        target_chain_address = context.user_data["user_EOA"]             # 유저가 등록한 EOA
+        amount_eth = context.user_data["WETH_amount"]                    # 예: "1.2" (string)
+        bridge_connector = context.user_data["bridge_connector"]         # 예: 저장된 BridgeConnector
+        bridge_address = context.user_data["bridge_contract"]            # 예: 저장된 Bridge
+
+        # amount를 wei 단위로 변환
+        amount_wei = Web3.to_wei(float(amount_eth), "ether")
+
+        # provider 인스턴스 호출
+        provider = context.bot_data["web3_provider"]
+
+        # executeBridgeCall 호출
+        tx_hash = provider.bridge_manager.execute_bridge_call(
+            telegram_id=telegram_id,
+            token_address=token_address,
+            target_chain_address=target_chain_address,
+            amount=amount_wei,
+            bridge_connector_address=bridge_connector,
+            bridge_address=bridge_address
+        )
+
+        # 성공 메시지
+        complete_text = COMPLETE_BRIDGE.format(
+            token_amount=amount_eth,
+            bridge_tx_hash=tx_hash
+        )
+
+    except KeyError as e:
+        complete_text = f"❌ Missing user input: {e}"
+    except Exception as e:
+        complete_text = f"❌ Bridge failed:\n<code>{str(e)}</code>"
+
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
