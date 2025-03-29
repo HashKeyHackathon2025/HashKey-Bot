@@ -435,7 +435,7 @@ def get_bridge_markup(selected: str, custom_input: str = None, custom_wallet: st
     WETH_75per_text = f"✅ {WETH_75PER_BUTTON}" if selected == WETH_75PER_BUTTON else WETH_75PER_BUTTON
     WETH_100per_text = f"✅ {WETH_100PER_BUTTON}" if selected == WETH_100PER_BUTTON else WETH_100PER_BUTTON
     if custom_input:
-        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} %"
+        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input}"
     else:
         input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
     return InlineKeyboardMarkup([
@@ -654,7 +654,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("지갑 주소가 등록되었습니다!")
         return
 
-    # 구매 수량 직접 입력 처리
+    # 브릿지 수량 직접 입력 처리
+    if context.user_data.get("waiting_for_bridge_input", False):
+        context.user_data["WETH_amount"] = user_text  # 슬리피지 값 저장 (예: "1.0")
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        bridge_msg_id = context.user_data.get("bridge_message_id")
+        if bridge_msg_id:
+            new_markup = get_bridge_markup(
+                INPUT_WETH_PER_BUTTON,
+                custom_input=context.user_data.get("WETH_amount"),
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=bridge_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_bridge_input"] = False
+        return
+    
+    # 트레이딩 구매 수량 직접 입력 처리
     if context.user_data.get("waiting_for_trading_amount_input", False):
         # 직접 입력한 값을 저장 (단일 변수로 관리)
         context.user_data["trading_buy_amount"] = user_text  # 예: "3.2"
@@ -796,6 +820,12 @@ async def main():
     app.add_handler(CommandHandler("bridge", bridge))
     app.add_handler(CommandHandler("chain", chain))
 
+    ########### 브릿지 ##############
+    # 브릿지 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
+    # 브릿지
+    app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
+
     ########### 지갑연결 ##############
     # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
@@ -817,19 +847,6 @@ async def main():
     app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
     # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
     app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
-
-    ########### 브릿지 ##############
-    # 브릿지 선택 콜백 처리
-    app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
-    # 브릿지
-    app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
-
-
-    # 브릿지 선택 콜백 처리
-    # app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
-    # 브릿지
-    # app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
-
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
