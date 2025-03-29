@@ -35,85 +35,81 @@ token_ticker = "GYU"
 balance = 616
 token_amount = 0
 tx_hash = "0xsendTokenHash"
-asset_num = 1
-asset_name = "HSK"
-asset_value = 0.01
-asset_pnl = 5
 weth_amount = 0.00000
 bridge_tx_hash = "0xbridgeHash"
 
 # 안내 문구
-WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
+WELCOME_TEXT = """Welcome to KeyBot {username}!
 
-{username}님의 간편한 거래를 위해 제가 지갑 주소를 생성했습니다.
-
+I've created a wallet address for your convenient trading: 
 <code>{wallet_address}</code>
 
-먼저 /register 기능으로 본인의 EOA를 등록해주세요.
+First, register your EOA with the /register function.
 
 ──────────────────
-- /trading 기능을 이용해보세요. 해시키, 이더리움 메인넷에서 거래가 가능합니다.
-- /wallet 버튼을 클릭하면 현재 지갑에 있는 모든 토큰의 달러 환산 가치, HSK 잔고, 현재 가스비 등을 확인할 수 있습니다.
-- /bridge 메뉴를 통해 이더리움에 있는 자산을 해시키 체인으로 가져오세요.
-- /chain 버튼을 클릭하고 트레이딩을 원하는 체인을 선택해보세요.
+- /trading Try using this feature. You can trade on Hashkey and Ethereum mainnet.
+- /wallet Click this button to check the dollar value of all tokens in your current wallet, HSK balance, current gas fees, and more.
+- /bridge Bring your assets from Ethereum to the Hashkey chain through this menu.
+- /chain Click this button and choose the chain you want to trade on.
 ──────────────────
 
-이제 /trading 버튼을 클릭하고 KeyBot을 이용해 보세요!
+Now click the /trading button and try using KeyBot!
 """
 
 # 하단 버튼 구성
 BOTTOM_KEYBOARD = [
-    [KeyboardButton("트레이딩"), KeyboardButton("지갑연결")],
-    [KeyboardButton("브릿지"), KeyboardButton("체인선택")]
+    [KeyboardButton("Trading"), KeyboardButton("Wallet Settings")],
+    [KeyboardButton("Bridge"), KeyboardButton("Chain Selection")]
 ]
 
 # 전역 변수로 스크리밍 모드 저장
 screaming = False
 
 # 트레이딩 텍스트
-FIRST_TRADING = """🔄 트레이딩\n
-1️⃣ 내 지갑 주소:
-2️⃣ 지갑 잔액:
-3️⃣ HSK 잔액:
-4️⃣ 가스비:
-5️⃣ 메인넷:
+TRADING_TEXT = "Starting trading on {chain_name}!"
+FIRST_TRADING = """🔄 Trading\n
+1️⃣ My wallet address:
+2️⃣ Wallet balance:
+3️⃣ HSK balance:
+4️⃣ Gas fee:
+5️⃣ Mainnet: Hashkey Chain
 ⛓️ <a href="https://hashkey.blockscout.com/">Explorer</a> | ⛓️ <a href="https://debank.com/">DeBank</a>
 
 """
 BUY_TRADING = """
-구매하고자 하는 토큰의 컨트랙트 주소를 입력해주세요.
+Please enter the contract address of the token you want to purchase.
 """
 SELL_TRADING = """
-판매하고자 하는 토큰의 컨트랙트 주소를 입력해주세요.
+Please enter the contract address of the token you want to sell.
 """
-SECOND_TRADING = """토큰 이름: {token_name}
-토큰 티커: {token_ticker}
+SECOND_TRADING = """Token Name: {token_name}
+Token Ticker: {token_ticker}
 
-1️⃣ 토큰 가격: 
-2️⃣ 시가 총액:
-3️⃣ 24시간 거래량:
+1️⃣ Token Price: 
+2️⃣ Market Cap:
+3️⃣ 24-hour Trading Volume:
 
 ⛓️ DEX Screener | ⛓️ Gecko Terminal
 
 """
-SET_SLIPPAGE = "슬리피지를 설정해주세요(최대 50%):"
-COMPLETE_BUY_TRADING = "{trading_buy_amount} HSK를 지불하고 {token_name} {amount}를 구입했습니다!"
-COMPLETE_SELL_TRADING = "{token_name} {amount}를 판매하고 0.00 HSK를 획득했습니다!"
+SET_SLIPPAGE = "Please set slippage (maximum 50%):"
+COMPLETE_BUY_TRADING = "Purchased {amount} {token_name} by paying {trading_buy_amount} HSK!"
+COMPLETE_SELL_TRADING = "Sold {amount} {token_name} and received {trading_sell_amount} HSK!"
 
 # 트레이딩 > 버튼 텍스트
 BUY_BUTTON = "📈 Buy"
 SELL_BUTTON = "📉 Sell"
 
-INFO_BUY_AMOUNT_BUTTON = "🪙 토큰 구매를 위해 지불할 HSK 수량 입력"
-INFO_SELL_AMOUNT_BUTTON = "🪙 토큰 판매 후 획득할 HSK 수량 입력"
+INFO_BUY_AMOUNT_BUTTON = "🪙 Token purchase amount (HSK) input"
+INFO_SELL_AMOUNT_BUTTON = "🪙 Amount of HSK to receive after selling tokens"
 HSK_10_BUTTON = "10 HSK"
 HSK_100_BUTTON = "100 HSK"
 HSK_1000_BUTTON = "1,000 HSK"
-MAX_AMOUNT_BUTTON = "최대 수량 설정"
-SET_MAX_AMOUNT_BUTTON = "최대 수량: 616 HSK"
-INPUT_TRADING_AMOUNT_BUTTON = "직접 입력:"
-INPUT_SLIPPAGE_BUTTON = "✅ 슬리피지 설정: 0.5%"
-COMPLETE_TRADING_BUTTON = "✅ 설정 완료"
+MAX_AMOUNT_BUTTON = "Set maximum amount"
+SET_MAX_AMOUNT_BUTTON = "Maximum amount: 616 HSK"
+INPUT_TRADING_AMOUNT_BUTTON = "Manual entry:"
+INPUT_SLIPPAGE_BUTTON = "✅ Slippage setting: 0.5%"
+COMPLETE_TRADING_BUTTON = "✅ Setup Complete"
 
 # 트레이딩 인라인 키보드 구성
 FIRST_TRADING_MARKUP = InlineKeyboardMarkup([
@@ -141,9 +137,6 @@ SELL_TRADING_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(COMPLETE_TRADING_BUTTON, callback_data=COMPLETE_TRADING_BUTTON)],
 ])
 
-# 체인 텍스트
-CHAIN_TEXT = "{chain_name}에서 거래를 시작합니다!"
-
 # 체인 선택 > 버튼
 HASHKEY_BUTTON = "Hashkey Chain"
 ETHEREUM_BUTTON = "Ethereum"
@@ -155,43 +148,37 @@ CHAIN_MARKUP = InlineKeyboardMarkup([
 ])
 
 # 지갑 설정 텍스트
-WALLET_TEXT = """👛 지갑 설정\n
-1️⃣ 지갑 주소:
-2️⃣ HSK 잔고:
-3️⃣ 지갑 전체 잔고:\n
-⛓️ <a href="https://hashkey.blockscout.com/">Explorer 연결</a>
-⛓️ <a href="https://debank.com/">DeBank 연결</a>
+WALLET_TEXT = """👛 Wallet Settings\n
+1️⃣ Wallet Address:
+2️⃣ HSK balance:\n
+⛓️ <a href="https://hashkey.blockscout.com/">Connect Explorer</a>
+⛓️ <a href="https://debank.com/">Connect DeBank</a>
 
 """
-SEND_TOKEN = """🔄 토큰 전송
-KeyBot이 생성한 지갑에 있는 HSK를 다른 지갑으로 전송합니다.
+SEND_TOKEN = """🔄 Token Transfer
+Transfer HSK from the wallet created by KeyBot to another wallet.
 """
-CURRENT_ASSET = """🪙 자산 현황\n
-{asset_num}. {asset_name} | Value: ${asset_value} | PNL: {asset_pnl}%
-"""
-COMPLETE_SEND_TOKEN = """{wallet_address}로 {token_amount} HSK를 전송했습니다!\n
-트랜잭션 해시:
+COMPLETE_SEND_TOKEN = """Transferred {token_amount} HSK to {wallet_address}!\n
+Transaction Hash:
 {tx_hash}
 """
 
 # 지갑 설정 > 버튼
-SEND_TOKEN_BUTTON = "🔄 토큰 전송"
-ASSET_BUTTON = "🪙 자산 현황"
+SEND_TOKEN_BUTTON = "🔄 Token Transfer"
 
-INFO_WALLET_ADDRESS_BUTTON = "1️⃣ HSK 전송할 지갑 주소 입력"
-INPUT_WALLET_ADDRESS_BUTTON = "지갑 주소를 입력해주세요:"
-INFO_SEND_PER_BUTTON = "2️⃣ 전송할 HSK 수량 선택"
+INFO_WALLET_ADDRESS_BUTTON = "1️⃣ Enter wallet address to transfer HSK"
+INPUT_WALLET_ADDRESS_BUTTON = "Please enter your wallet address::"
+INFO_SEND_PER_BUTTON = "2️⃣ Select the amount of HSK to send"
 HSK_25PER_BUTTON = "25%"
 HSK_50PER_BUTTON = "50%"
 HSK_75PER_BUTTON = "75%"
 HSK_100PER_BUTTON = "100%"
-INPUT_HSK_PER_BUTTON = "직접 입력:"
-COMPLETE_SEND_TOKEN_BUTTON = "✅ 토큰 설정 완료"
+INPUT_HSK_PER_BUTTON = "Manual entry:"
+COMPLETE_SEND_TOKEN_BUTTON = "✅ Token Setup Complete"
 
 # 지갑 설정 인라인 키보드 구성
 WALLET_MARKUP = InlineKeyboardMarkup([
-    [InlineKeyboardButton(SEND_TOKEN_BUTTON, callback_data=SEND_TOKEN_BUTTON)],
-    [InlineKeyboardButton(ASSET_BUTTON, callback_data=ASSET_BUTTON)]
+    [InlineKeyboardButton(SEND_TOKEN_BUTTON, callback_data=SEND_TOKEN_BUTTON)]
 ])
 SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(INFO_WALLET_ADDRESS_BUTTON, callback_data=INFO_WALLET_ADDRESS_BUTTON)],
@@ -206,28 +193,28 @@ SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
 ])
 
 # 브릿지 텍스트
-BRIDGE_TEXT = "🔄 Ethereum 메인넷에서 Hashkey chain 메인넷으로 자산을 전송하세요."
+BRIDGE_TEXT = "🔄 Transfer your assets from Ethereum mainnet to Hashkey chain mainnet."
 COMPLETE_BRIDGE = """
-{token_amount} WETH가 Ethereum 메인넷에서 Hashkey 메인넷으로 전송되었습니다\n
+{token_amount} WETH has been transferred from Ethereum mainnet to Hashkey mainnet!\n
 
-transaction hash:
+Transaction Hash:
 {bridge_tx_hash}
 """
 
 # 브릿지 > 버튼
-INFO_FROM_MAINNET_BUTTON = "1️⃣ FROM 메인넷 설정"
+INFO_FROM_MAINNET_BUTTON = "1️⃣ Select source network"
 SET_FROM_MAINNET_BUTTON = "✅ Ethereum"
-INFO_TO_MAINNET_BUTTON = "2️⃣ To 메인넷 설정"
+INFO_TO_MAINNET_BUTTON = "2️⃣ Set up destination mainnet"
 SET_TO_MAINNET_BUTTON = "✅ Hashkey Chain"
-INFO_SELECT_ASSET_BUTTON = "3️⃣ 자산 선택"
+INFO_SELECT_ASSET_BUTTON = "3️⃣ Select asset"
 SET_ASSET_BUTTON = "WETH"
 INFO_ASSET_BALANCE_BUTTON = "{weth_amount} WETH available"
 WETH_25PER_BUTTON = "25%"
 WETH_50PER_BUTTON = "50%"
 WETH_75PER_BUTTON = "75%"
 WETH_100PER_BUTTON = "100%"
-INPUT_WETH_PER_BUTTON = "직접 입력:"
-COMPLETE_BRIDGE_BUTTON = "✅ 브릿지 설정 완료"
+INPUT_WETH_PER_BUTTON = "Manual entry: "
+COMPLETE_BRIDGE_BUTTON = "✅ Bridge Setup Complete"
 
 # 브릿지 설정 인라인 키보드 구성
 BRIDGE_MARKUP = InlineKeyboardMarkup([
@@ -281,7 +268,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 등록할 지갑 주소를 입력하라는 프롬프트 메시지 전송
-    await update.message.reply_text("등록할 지갑 주소를 입력해주세요:")
+    await update.message.reply_text("Please enter your wallet address to register:")
     # 이후 사용자의 입력을 기다리기 위한 플래그 설정
     context.user_data["waiting_for_register"] = True
 
@@ -305,7 +292,7 @@ async def trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chain_name = context.user_data.get("selected_chain", HASHKEY_BUTTON)
 
     # 안내 문구에 체인 이름 삽입
-    text_to_send = CHAIN_TEXT.format(chain_name=chain_name)
+    text_to_send = TRADING_TEXT.format(chain_name=chain_name)
 
     await update.message.reply_text(
         text=text_to_send,
@@ -377,7 +364,7 @@ async def trading_buy_amount_callback_handler(update: Update, context: ContextTy
         # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
         msg = await context.bot.send_message(
             chat_id=query.message.chat.id,
-            text="구매할 HSK 수량을 입력해주세요:",
+            text="Please enter the amount of HSK to buy:",
             parse_mode=ParseMode.HTML
         )
         context.user_data["waiting_for_trading_amount_input"] = True
@@ -463,7 +450,7 @@ async def bridge_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
         msg = await context.bot.send_message(
             chat_id=query.message.chat.id,
-            text="Hashkey Chain으로 전환할 WETH 수량을 입력해주세요:",
+            text="Please enter the amount of WETH to convert to Hashkey Chain:",
             parse_mode=ParseMode.HTML
         )
         context.user_data["waiting_for_bridge_input"] = True
@@ -553,7 +540,7 @@ async def send_wallet_and_token_per_callback_handler(update: Update, context: Co
         # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
         msg = await context.bot.send_message(
             chat_id=query.message.chat.id,
-            text="전송할 HSK 수량을 입력해주세요:",
+            text="Please enter the amount of HSK to transfer:",
             parse_mode=ParseMode.HTML
         )
         context.user_data["waiting_for_send_token_amount_input"] = True
@@ -562,7 +549,7 @@ async def send_wallet_and_token_per_callback_handler(update: Update, context: Co
         # 지갑 주소 입력 처리
         msg = await context.bot.send_message(
             chat_id=query.message.chat.id,
-            text="KeyBot 지갑에서 HSK를 전송받을 지갑 주소를 입력해주세요:",
+            text="Please enter the wallet address that will receive HSK from KeyBot wallet:",
             parse_mode=ParseMode.HTML
         )
         context.user_data["waiting_for_wallet_address_input"] = True
@@ -595,27 +582,13 @@ async def complete_send_token_handler(update: Update, context: ContextTypes.DEFA
         parse_mode=ParseMode.HTML
     )
 
-# 자산 현황
-async def current_asset_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    text_to_send = CURRENT_ASSET.format(asset_num=asset_num, asset_name=asset_name, asset_value=asset_value, asset_pnl=asset_pnl)
-
-    # CURRENT_ASSET 메시지 전송
-    sent_msg = await context.bot.send_message(
-        chat_id=query.message.chat.id,
-        text=text_to_send,
-        parse_mode=ParseMode.HTML,
-    )
-
 async def chain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 디폴트 선택은 Hashkey Chain
     if "selected_chain" not in context.user_data:
         context.user_data["selected_chain"] = HASHKEY_BUTTON
     markup = get_chain_markup(context.user_data["selected_chain"])
     await update.message.reply_text(
-        text="⛓️ 체인 선택",
+        text="⛓️ Chain Selection",
         parse_mode=ParseMode.HTML,
         reply_markup=markup
     )
@@ -651,7 +624,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("waiting_for_register", False):
         context.user_data["user_EOA"] = update.message.text.strip()
         context.user_data["waiting_for_register"] = False
-        await update.message.reply_text("지갑 주소가 등록되었습니다!")
+        await update.message.reply_text("Your wallet address has been registered!")
         return
 
     # 브릿지 수량 직접 입력 처리
@@ -767,7 +740,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 메시지 ID 저장 (나중에 인라인 키보드 업데이트에 사용)
             context.user_data["trading_message_id"] = sent_trading.message_id
         else:
-            await update.message.reply_text("지원하지 않는 토큰입니다.")
+            await update.message.reply_text("This token is not supported.")
         context.user_data["waiting_for_buy_input"] = False
         return
     elif context.user_data.get("waiting_for_sell_input", False):
@@ -780,18 +753,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 메시지 ID 저장 (나중에 인라인 키보드 업데이트에 사용)
             context.user_data["trading_message_id"] = sent_trading.message_id
         else:
-            await update.message.reply_text("지원하지 않는 토큰입니다.")
+            await update.message.reply_text("This token is not supported.")
         context.user_data["waiting_for_sell_input"] = False
         return
     
     # 버튼 텍스트에 따른 분기
-    if user_text == "트레이딩":
+    if user_text == "Trading":
         await trading(update, context)
-    elif user_text == "브릿지":
+    elif user_text == "Bridge":
         await bridge(update, context)
-    elif user_text == "지갑연결":
+    elif user_text == "Wallet Settings":
         await wallet(update, context)
-    elif user_text == "체인선택":
+    elif user_text == "Chain Selection":
         await chain(update, context)
     else:
         # 그 외 일반 텍스트는 echo 로직 수행
@@ -827,8 +800,6 @@ async def main():
     app.add_handler(CallbackQueryHandler(send_token_handler, pattern=f'^{SEND_TOKEN_BUTTON}$'))
     # COMPLETE_SEND_TOKEN_BUTTON 처리: 버튼을 누르면 COMPLETE_SEND_TOKEN 출력
     app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
-    # 지갑연결 - 자산 현황
-    app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
 
     ########### 브릿지 ##############
     # 브릿지 선택 콜백 처리
@@ -850,7 +821,7 @@ async def main():
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
-    print("🤖 봇 실행 중...")
+    print("🤖 Bot running ...")
     await app.run_polling()
 
 
