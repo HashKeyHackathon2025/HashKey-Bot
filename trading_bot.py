@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 wallet_address = "0x7896Dfb8f8Ef9e36BA37ACB111AaE3D704dbc51Ed"
 token_name = "gyuseon"
 token_ticker = "GYU"
-amount = 616
+balance = 616
 
 # 안내 문구
 WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
@@ -87,7 +87,7 @@ SECOND_TRADING = """토큰 이름: {token_name}
 
 """
 SET_SLIPPAGE = "슬리피지를 설정해주세요(최대 50%):"
-COMPLETE_BUY_TRADING = "0.00 HSK를 지불하고 {token_name} {amount}를 구입했습니다!"
+COMPLETE_BUY_TRADING = "{trading_buy_amount} HSK를 지불하고 {token_name} {amount}를 구입했습니다!"
 COMPLETE_SELL_TRADING = "{token_name} {amount}를 판매하고 0.00 HSK를 획득했습니다!"
 
 # 트레이딩 > 버튼 텍스트
@@ -234,7 +234,7 @@ async def trading_button_handler(update: Update, context: ContextTypes.DEFAULT_T
         context.user_data["waiting_for_sell_input"] = True
 
 # 인라인 키보드 생성 함수 (구매 수량 선택용)
-def get_trading_buy_amount_markup(selected: str, custom_input: str = None):
+def get_trading_buy_amount_markup(selected: str, custom_input: str = None, custom_slippage: str = None):
     HSK_10_text = f"✅ {HSK_10_BUTTON}" if selected == HSK_10_BUTTON else HSK_10_BUTTON
     HSK_100_text = f"✅ {HSK_100_BUTTON}" if selected == HSK_100_BUTTON else HSK_100_BUTTON
     HSK_1000_text = f"✅ {HSK_1000_BUTTON}" if selected == HSK_1000_BUTTON else HSK_1000_BUTTON
@@ -243,6 +243,10 @@ def get_trading_buy_amount_markup(selected: str, custom_input: str = None):
         input_trading_amount_text = f"✅ {INPUT_TRADING_AMOUNT_BUTTON} {custom_input} HSK"
     else:
         input_trading_amount_text = f"✅ {INPUT_TRADING_AMOUNT_BUTTON}" if selected == INPUT_TRADING_AMOUNT_BUTTON else INPUT_TRADING_AMOUNT_BUTTON
+    if custom_slippage:
+        slippage_text = f"✅ 슬리피지 설정: {custom_slippage}%"
+    else:
+        slippage_text = INPUT_SLIPPAGE_BUTTON
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(INFO_BUY_AMOUNT_BUTTON, callback_data=INFO_BUY_AMOUNT_BUTTON)],
         [InlineKeyboardButton(HSK_10_text, callback_data=HSK_10_BUTTON),
@@ -250,7 +254,7 @@ def get_trading_buy_amount_markup(selected: str, custom_input: str = None):
          InlineKeyboardButton(HSK_1000_text, callback_data=HSK_1000_BUTTON)],
         [InlineKeyboardButton(max_amount_text, callback_data=MAX_AMOUNT_BUTTON),
          InlineKeyboardButton(input_trading_amount_text, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
-        [InlineKeyboardButton(INPUT_SLIPPAGE_BUTTON, callback_data=INPUT_SLIPPAGE_BUTTON)],
+        [InlineKeyboardButton(slippage_text, callback_data=INPUT_SLIPPAGE_BUTTON)],
         [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
     ])
 
@@ -260,38 +264,50 @@ async def trading_buy_amount_callback_handler(update: Update, context: ContextTy
     await query.answer()
     data = query.data
     if data == INPUT_TRADING_AMOUNT_BUTTON:
-        # "직접 입력:" 버튼을 누르면 새 메시지로 안내 메시지를 전송합니다.
+        # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
         msg = await context.bot.send_message(
             chat_id=query.message.chat.id,
             text="구매할 HSK 수량을 입력해주세요:",
             parse_mode=ParseMode.HTML
         )
-        # 프롬프트 메시지의 ID 저장 및 플래그 설정
         context.user_data["waiting_for_trading_amount_input"] = True
         context.user_data["trading_buy_prompt_message_id"] = msg.message_id
-    else:
-        # 그 외 버튼 선택 시 기존 로직대로 처리
-        context.user_data["trading_buy_amount"] = data
-        updated_markup = get_trading_buy_amount_markup(data)
+    elif data == INPUT_SLIPPAGE_BUTTON:
+        # 슬리피지 입력 처리
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=SET_SLIPPAGE,
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_slippage_input"] = True
+        context.user_data["slippage_prompt_message_id"] = msg.message_id
+    elif data in [HSK_10_BUTTON, HSK_100_BUTTON, HSK_1000_BUTTON, MAX_AMOUNT_BUTTON]:
+        if data == HSK_10_BUTTON:
+            numeric_value = 10
+        elif data == HSK_100_BUTTON:
+            numeric_value = 100
+        elif data == HSK_1000_BUTTON:
+            numeric_value = 1000
+        elif data == MAX_AMOUNT_BUTTON:
+            numeric_value = balance  # 미리 정의된 balance 변수 사용
+        # 단일 변수에 숫자값 저장
+        context.user_data["trading_buy_amount"] = str(numeric_value)
+        updated_markup = get_trading_buy_amount_markup(data, custom_slippage=context.user_data.get("trading_slippage"))
         await query.edit_message_reply_markup(reply_markup=updated_markup)
+    else:
+        # 기타 경우는 별도 처리 (필요하면)
+        pass
 
-def get_trading_buy_amount_markup_with_input(user_input: str):
-    HSK_10_text = f"✅ {HSK_10_BUTTON}" if user_input == HSK_10_BUTTON else HSK_10_BUTTON
-    HSK_100_text = f"✅ {HSK_100_BUTTON}" if user_input == HSK_100_BUTTON else HSK_100_BUTTON
-    HSK_1000_text = f"✅ {HSK_1000_BUTTON}" if user_input == HSK_1000_BUTTON else HSK_1000_BUTTON
-    max_amount_text = f"✅ {SET_MAX_AMOUNT_BUTTON}" if user_input == MAX_AMOUNT_BUTTON else MAX_AMOUNT_BUTTON
-    # "직접 입력:" 버튼의 텍스트를 사용자 입력값으로 대체하고 "HSK"를 붙임
-    input_trading_amount_text = f"{user_input} HSK"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(INFO_BUY_AMOUNT_BUTTON, callback_data=INFO_BUY_AMOUNT_BUTTON)],
-        [InlineKeyboardButton(HSK_10_text, callback_data=HSK_10_BUTTON),
-         InlineKeyboardButton(HSK_100_text, callback_data=HSK_100_BUTTON),
-         InlineKeyboardButton(HSK_1000_text, callback_data=HSK_1000_BUTTON)],
-        [InlineKeyboardButton(max_amount_text, callback_data=MAX_AMOUNT_BUTTON),
-         InlineKeyboardButton(input_trading_amount_text, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
-        [InlineKeyboardButton(INPUT_SLIPPAGE_BUTTON, callback_data=INPUT_SLIPPAGE_BUTTON)],
-        [InlineKeyboardButton(COMPLETE_BUTTON, callback_data=COMPLETE_BUTTON)],
-    ])
+async def complete_buy_trading_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    # COMPLETE_BUY_TRADING 텍스트에 token_name과 amount 값을 대입하여 출력합니다.
+    complete_text = COMPLETE_BUY_TRADING.format(trading_buy_amount=context.user_data["trading_buy_amount"],token_name=token_name, amount=0.0)
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=complete_text,
+        parse_mode=ParseMode.HTML
+    )
 
 async def bridge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("브릿지 기능을 실행합니다!")
@@ -337,20 +353,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 사용자가 입력(또는 버튼 클릭)한 텍스트
     user_text = update.message.text
 
-    # 구매 수량 직접 입력 플래그 처리
+    # 구매 수량 직접 입력 처리
     if context.user_data.get("waiting_for_trading_amount_input", False):
-        # 사용자가 입력한 값을 저장 (예: "3.2")
-        input_value = user_text.strip()
-        context.user_data["trading_buy_amount"] = input_value
-        # 사용자가 입력한 메시지 삭제 (이펙트처럼 사라지도록)
+        # 직접 입력한 값을 저장 (단일 변수로 관리)
+        context.user_data["trading_buy_amount"] = user_text  # 예: "3.2"
         try:
             await update.message.delete()
         except Exception as e:
             logger.error(f"메시지 삭제 실패: {e}")
-        # 업데이트할 인라인 키보드 재생성:
         trading_msg_id = context.user_data.get("trading_message_id")
         if trading_msg_id:
-            new_markup = get_trading_buy_amount_markup(INPUT_TRADING_AMOUNT_BUTTON, custom_input=input_value)
+            new_markup = get_trading_buy_amount_markup(
+                INPUT_TRADING_AMOUNT_BUTTON,
+                custom_input=user_text,
+                custom_slippage=context.user_data.get("trading_slippage")
+            )
             try:
                 await context.bot.edit_message_reply_markup(
                     chat_id=update.message.chat.id,
@@ -360,6 +377,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"인라인 키보드 업데이트 실패: {e}")
         context.user_data["waiting_for_trading_amount_input"] = False
+        return
+
+    # 슬리피지 직접 입력 처리
+    if context.user_data.get("waiting_for_slippage_input", False):
+        context.user_data["trading_slippage"] = user_text  # 슬리피지 값 저장 (예: "1.0")
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        trading_msg_id = context.user_data.get("trading_message_id")
+        if trading_msg_id:
+            new_markup = get_trading_buy_amount_markup(
+                INPUT_TRADING_AMOUNT_BUTTON,
+                custom_input=context.user_data.get("trading_buy_amount"),
+                custom_slippage=user_text
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=trading_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_slippage_input"] = False
         return
     
     # 만약 "Buy 모드" 상태라면, 입력값 검증 후 SECOND_TRADING 출력
@@ -432,8 +474,10 @@ async def main():
     # 체인 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(chain_callback_handler, pattern=f'^({HASHKEY_BUTTON}|{ETHEREUM_BUTTON})$'))
     # 트레이딩 - 구매할 HSK 수량 선택 콜백 처리
-    app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON})$'))
-
+    app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
+    # COMPLETE_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
+    app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_BUTTON}$'))
+    
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
     print("🤖 봇 실행 중...")
