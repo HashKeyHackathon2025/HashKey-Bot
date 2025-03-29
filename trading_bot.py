@@ -34,11 +34,13 @@ token_name = "gyuseon"
 token_ticker = "GYU"
 balance = 616
 token_amount = 0
-tx_hash = "0x00000"
+tx_hash = "0xsendTokenHash"
 asset_num = 1
 asset_name = "HSK"
 asset_value = 0.01
 asset_pnl = 5
+weth_amount = 0.00000
+bridge_tx_hash = "0xbridgeHash"
 
 # 안내 문구
 WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
@@ -47,12 +49,14 @@ WELCOME_TEXT = """KeyBot에 오신걸 환영합니다 {username}!
 
 <code>{wallet_address}</code>
 
-─────────────────────
+먼저 /register 기능으로 본인의 EOA를 등록해주세요.
+
+──────────────────
 - /trading 기능을 이용해보세요. 해시키, 이더리움 메인넷에서 거래가 가능합니다.
 - /wallet 버튼을 클릭하면 현재 지갑에 있는 모든 토큰의 달러 환산 가치, HSK 잔고, 현재 가스비 등을 확인할 수 있습니다.
 - /bridge 메뉴를 통해 이더리움에 있는 자산을 해시키 체인으로 가져오세요.
 - /chain 버튼을 클릭하고 트레이딩을 원하는 체인을 선택해보세요.
-─────────────────────
+──────────────────
 
 이제 /trading 버튼을 클릭하고 KeyBot을 이용해 보세요!
 """
@@ -201,6 +205,47 @@ SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
     [InlineKeyboardButton(COMPLETE_SEND_TOKEN_BUTTON, callback_data=COMPLETE_SEND_TOKEN_BUTTON)]
 ])
 
+# 브릿지 텍스트
+BRIDGE_TEXT = "🔄 Ethereum 메인넷에서 Hashkey chain 메인넷으로 자산을 전송하세요."
+COMPLETE_BRIDGE = """
+{token_amount} WETH가 Ethereum 메인넷에서 Hashkey 메인넷으로 전송되었습니다\n
+
+transaction hash:
+{bridge_tx_hash}
+"""
+
+# 브릿지 > 버튼
+INFO_FROM_MAINNET_BUTTON = "1️⃣ FROM 메인넷 설정"
+SET_FROM_MAINNET_BUTTON = "✅ Ethereum"
+INFO_TO_MAINNET_BUTTON = "2️⃣ To 메인넷 설정"
+SET_TO_MAINNET_BUTTON = "✅ Hashkey Chain"
+INFO_SELECT_ASSET_BUTTON = "3️⃣ 자산 선택"
+SET_ASSET_BUTTON = "WETH"
+INFO_ASSET_BALANCE_BUTTON = "{weth_amount} WETH available"
+WETH_25PER_BUTTON = "25%"
+WETH_50PER_BUTTON = "50%"
+WETH_75PER_BUTTON = "75%"
+WETH_100PER_BUTTON = "100%"
+INPUT_WETH_PER_BUTTON = "직접 입력:"
+COMPLETE_BRIDGE_BUTTON = "✅ 브릿지 설정 완료"
+
+# 브릿지 설정 인라인 키보드 구성
+BRIDGE_MARKUP = InlineKeyboardMarkup([
+    [InlineKeyboardButton(INFO_FROM_MAINNET_BUTTON, callback_data=INFO_FROM_MAINNET_BUTTON)],
+    [InlineKeyboardButton(SET_FROM_MAINNET_BUTTON, callback_data=SET_FROM_MAINNET_BUTTON)],
+    [InlineKeyboardButton(INFO_TO_MAINNET_BUTTON, callback_data=INFO_TO_MAINNET_BUTTON)],
+    [InlineKeyboardButton(SET_TO_MAINNET_BUTTON, callback_data=SET_TO_MAINNET_BUTTON)],
+    [InlineKeyboardButton(INFO_SELECT_ASSET_BUTTON, callback_data=INFO_SELECT_ASSET_BUTTON)],
+    [InlineKeyboardButton(SET_ASSET_BUTTON, callback_data=SET_ASSET_BUTTON)],
+    [InlineKeyboardButton(INFO_ASSET_BALANCE_BUTTON, callback_data=INFO_ASSET_BALANCE_BUTTON)],
+    [InlineKeyboardButton(WETH_25PER_BUTTON, callback_data=WETH_25PER_BUTTON),
+     InlineKeyboardButton(WETH_50PER_BUTTON, callback_data=WETH_50PER_BUTTON),
+     InlineKeyboardButton(WETH_75PER_BUTTON, callback_data=WETH_75PER_BUTTON)],
+    [InlineKeyboardButton(WETH_100PER_BUTTON, callback_data=WETH_100PER_BUTTON),
+     InlineKeyboardButton(INPUT_WETH_PER_BUTTON, callback_data=INPUT_WETH_PER_BUTTON)],
+    [InlineKeyboardButton(COMPLETE_BRIDGE_BUTTON, callback_data=COMPLETE_BRIDGE_BUTTON)]
+])
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -248,6 +293,16 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await update.message.copy(chat_id=update.message.chat_id)
+
+async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text="등록할 지갑 주소를 입력해주세요:",
+        parse_mode=ParseMode.HTML
+    )
 
 async def trading(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 체인 이름 (없으면 'Hashkey'로 대체)
@@ -369,7 +424,83 @@ async def complete_buy_trading_handler(update: Update, context: ContextTypes.DEF
     )
 
 async def bridge(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("브릿지 기능을 실행합니다!")
+    sent_msg = await update.message.reply_text(
+        text=BRIDGE_TEXT,
+        parse_mode=ParseMode.HTML,
+        reply_markup=BRIDGE_MARKUP
+    )
+    # 메시지 ID를 저장 (이후 지갑 주소 입력 업데이트에 사용)
+    context.user_data["bridge_message_id"] = sent_msg.message_id
+
+# 인라인 키보드 생성 함수 (전송할 지갑주소 세팅, HSK 수량 선택용)
+def get_bridge_markup(selected: str, custom_input: str = None, custom_wallet: str = None):
+    WETH_25per_text = f"✅ {WETH_25PER_BUTTON}" if selected == WETH_25PER_BUTTON else WETH_25PER_BUTTON
+    WETH_50per_text = f"✅ {WETH_50PER_BUTTON}" if selected == WETH_50PER_BUTTON else WETH_50PER_BUTTON
+    WETH_75per_text = f"✅ {WETH_75PER_BUTTON}" if selected == WETH_75PER_BUTTON else WETH_75PER_BUTTON
+    WETH_100per_text = f"✅ {WETH_100PER_BUTTON}" if selected == WETH_100PER_BUTTON else WETH_100PER_BUTTON
+    if custom_input:
+        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} %"
+    else:
+        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(INFO_FROM_MAINNET_BUTTON, callback_data=INFO_FROM_MAINNET_BUTTON)],
+        [InlineKeyboardButton(SET_FROM_MAINNET_BUTTON, callback_data=SET_FROM_MAINNET_BUTTON)],
+        [InlineKeyboardButton(INFO_TO_MAINNET_BUTTON, callback_data=INFO_TO_MAINNET_BUTTON)],
+        [InlineKeyboardButton(SET_TO_MAINNET_BUTTON, callback_data=SET_TO_MAINNET_BUTTON)],
+        [InlineKeyboardButton(INFO_SELECT_ASSET_BUTTON, callback_data=INFO_SELECT_ASSET_BUTTON)],
+        [InlineKeyboardButton(SET_ASSET_BUTTON, callback_data=SET_ASSET_BUTTON)],
+        [InlineKeyboardButton(INFO_ASSET_BALANCE_BUTTON, callback_data=INFO_ASSET_BALANCE_BUTTON)],
+        [InlineKeyboardButton(WETH_25per_text, callback_data=WETH_25PER_BUTTON),
+         InlineKeyboardButton(WETH_50per_text, callback_data=WETH_50PER_BUTTON),
+         InlineKeyboardButton(WETH_75per_text, callback_data=WETH_75PER_BUTTON)],
+        [InlineKeyboardButton(WETH_100per_text, callback_data=WETH_100PER_BUTTON),
+        InlineKeyboardButton(input_WETH_per_text, callback_data=INPUT_WETH_PER_BUTTON)],
+        [InlineKeyboardButton(COMPLETE_BRIDGE_BUTTON, callback_data=COMPLETE_BRIDGE_BUTTON)]
+    ])
+
+# 선택한 token per에 체크
+async def bridge_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    if data == INPUT_WETH_PER_BUTTON:
+        # "직접 입력:" 버튼 선택 시, 새 메시지로 프롬프트 전송
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text="Hashkey Chain으로 전환할 WETH 수량을 입력해주세요:",
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_bridge_input"] = True
+        context.user_data["bridge_prompt_message_id"] = msg.message_id
+    elif data in [WETH_25PER_BUTTON, WETH_50PER_BUTTON, WETH_75PER_BUTTON, WETH_100PER_BUTTON]:
+        if data == WETH_25PER_BUTTON:
+            numeric_value = 25
+        elif data == WETH_50PER_BUTTON:
+            numeric_value = 50
+        elif data == WETH_75PER_BUTTON:
+            numeric_value = 75
+        elif data == WETH_100PER_BUTTON:
+            numeric_value = 100
+        # 단일 변수에 숫자값 저장
+        context.user_data["bridge_per"] = str(numeric_value)
+        updated_bridge_markup = get_bridge_markup(data)
+        await query.edit_message_reply_markup(reply_markup=updated_bridge_markup)
+    else:
+        # 기타 경우는 별도 처리 (필요하면)
+        pass
+
+async def complete_bridge_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    # COMPLETE_BRIDGE 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
+    complete_text = COMPLETE_BRIDGE.format(token_amount=weth_amount,bridge_tx_hash=bridge_tx_hash)
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=complete_text,
+        parse_mode=ParseMode.HTML
+    )
+##########################
+
 
 async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -415,7 +546,7 @@ def get_wallet_and_token_per_markup(selected: str, custom_input: str = None, cus
          InlineKeyboardButton(HSK_50per_text, callback_data=HSK_50PER_BUTTON),
          InlineKeyboardButton(HSK_75per_text, callback_data=HSK_75PER_BUTTON)],
         [InlineKeyboardButton(HSK_100per_text, callback_data=HSK_100PER_BUTTON),
-        InlineKeyboardButton(input_HSK_per_text, callback_data=INPUT_HSK_PER_BUTTON)],
+         InlineKeyboardButton(input_HSK_per_text, callback_data=INPUT_HSK_PER_BUTTON)],
         [InlineKeyboardButton(COMPLETE_SEND_TOKEN_BUTTON, callback_data=COMPLETE_SEND_TOKEN_BUTTON)]
     ])
 
@@ -663,6 +794,16 @@ async def main():
     app.add_handler(CommandHandler("bridge", bridge))
     app.add_handler(CommandHandler("chain", chain))
 
+    # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
+    # 지갑연결 - 토큰 전송
+    app.add_handler(CallbackQueryHandler(send_token_handler, pattern=f'^{SEND_TOKEN_BUTTON}$'))
+    # COMPLETE_SEND_TOKEN_BUTTON 처리: 버튼을 누르면 COMPLETE_SEND_TOKEN 출력
+    app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
+    # 지갑연결 - 자산 현황
+    app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
+
+
     # 트레이딩 인라인 버튼 처리: BUY와 SELL
     app.add_handler(CallbackQueryHandler(trading_button_handler, pattern='^(📈 Buy|📉 Sell)$'))
     # 체인 선택 콜백 처리
@@ -671,14 +812,18 @@ async def main():
     app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
     # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
     app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
-    # 지갑연결 - 토큰 전송
-    app.add_handler(CallbackQueryHandler(send_token_handler, pattern=f'^{SEND_TOKEN_BUTTON}$'))
-    # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
-    app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
-    # COMPLETE_SEND_TOKEN_BUTTON 처리: 버튼을 누르면 COMPLETE_SEND_TOKEN 출력
-    app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
-    # 지갑연결 - 자산 현황
-    app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
+
+    # 브릿지 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
+    # 브릿지
+    app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
+
+
+    # 브릿지 선택 콜백 처리
+    # app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
+    # 브릿지
+    # app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
+
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
