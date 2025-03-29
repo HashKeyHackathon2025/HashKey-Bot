@@ -166,7 +166,7 @@ WALLET_TEXT = """👛 지갑 설정\n
 SEND_TOKEN = """🔄 토큰 전송
 KeyBot이 생성한 지갑에 있는 HSK를 다른 지갑으로 전송합니다.
 """
-CURRENT_ASSET = """🪙 자산 현황
+CURRENT_ASSET = """🪙 자산 현황\n
 {asset_num}. {asset_name} | Value: ${asset_value} | PNL: {asset_pnl}%
 """
 COMPLETE_SEND_TOKEN = """{wallet_address}로 {token_amount} HSK를 전송했습니다!\n
@@ -429,15 +429,15 @@ async def bridge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["bridge_message_id"] = sent_msg.message_id
 
 # 인라인 키보드 생성 함수 (전송할 지갑주소 세팅, HSK 수량 선택용)
-def get_bridge_markup(selected: str, custom_input: str = None, custom_wallet: str = None):
+def get_bridge_markup(selected: str, custom_input: str = None):
     WETH_25per_text = f"✅ {WETH_25PER_BUTTON}" if selected == WETH_25PER_BUTTON else WETH_25PER_BUTTON
     WETH_50per_text = f"✅ {WETH_50PER_BUTTON}" if selected == WETH_50PER_BUTTON else WETH_50PER_BUTTON
     WETH_75per_text = f"✅ {WETH_75PER_BUTTON}" if selected == WETH_75PER_BUTTON else WETH_75PER_BUTTON
     WETH_100per_text = f"✅ {WETH_100PER_BUTTON}" if selected == WETH_100PER_BUTTON else WETH_100PER_BUTTON
     if custom_input:
-        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input}"
+        input_WETH_per_text = f"✅ {INPUT_WETH_PER_BUTTON} {custom_input}"
     else:
-        input_WETH_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
+        input_WETH_per_text = f"✅ {INPUT_WETH_PER_BUTTON}" if selected == INPUT_WETH_PER_BUTTON else INPUT_WETH_PER_BUTTON
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(INFO_FROM_MAINNET_BUTTON, callback_data=INFO_FROM_MAINNET_BUTTON)],
         [InlineKeyboardButton(SET_FROM_MAINNET_BUTTON, callback_data=SET_FROM_MAINNET_BUTTON)],
@@ -820,12 +820,6 @@ async def main():
     app.add_handler(CommandHandler("bridge", bridge))
     app.add_handler(CommandHandler("chain", chain))
 
-    ########### 브릿지 ##############
-    # 브릿지 선택 콜백 처리
-    app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
-    # 브릿지
-    app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
-
     ########### 지갑연결 ##############
     # 토큰 전송 - 전송할 지갑 주소, HSK 비율 선택 콜백 처리
     app.add_handler(CallbackQueryHandler(send_wallet_and_token_per_callback_handler, pattern=f'^({HSK_25PER_BUTTON}|{HSK_50PER_BUTTON}|{HSK_75PER_BUTTON}|{HSK_100PER_BUTTON}|{INPUT_HSK_PER_BUTTON}|{INPUT_WALLET_ADDRESS_BUTTON})$'))
@@ -835,6 +829,12 @@ async def main():
     app.add_handler(CallbackQueryHandler(complete_send_token_handler, pattern=f'^{COMPLETE_SEND_TOKEN_BUTTON}$'))
     # 지갑연결 - 자산 현황
     app.add_handler(CallbackQueryHandler(current_asset_handler, pattern=f'^{ASSET_BUTTON}$'))
+
+    ########### 브릿지 ##############
+    # 브릿지 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(bridge_callback_handler, pattern=f'^({WETH_25PER_BUTTON}|{WETH_50PER_BUTTON}|{WETH_75PER_BUTTON}|{WETH_100PER_BUTTON}|{INPUT_WETH_PER_BUTTON})$'))
+    # 브릿지
+    app.add_handler(CallbackQueryHandler(complete_bridge_handler, pattern=f'^{COMPLETE_BRIDGE_BUTTON}$'))
 
     ########### 체인선택 ##############
     # 체인 선택 콜백 처리
