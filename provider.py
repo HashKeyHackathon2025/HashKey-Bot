@@ -29,3 +29,24 @@ class Web3Provider:
 
     def is_connected(self):
         return self.w3.is_connected()
+    
+    def call_function(self, contract_function, *args):
+        my_address = Web3.to_checksum_address(self.w3.eth.account.from_key(self.account.key).address)
+        result = contract_function(*args).call({'from': my_address, 'chainId': self.w3.eth.chain_id})
+        return result
+    
+    def send_transaction(self, contract_function, *args):
+        my_address = Web3.to_checksum_address(self.w3.eth.account.from_key(self.account.key).address)
+        nonce = self.w3.eth.get_transaction_count(my_address)
+        
+        transaction = contract_function(*args).build_transaction({
+            'from': my_address,
+            'gas': contract_function(*args).estimate_gas({'from': my_address}),
+            'gasPrice': self.w3.eth.gas_price,
+            'nonce': nonce,
+            'chainId': self.w3.eth.chain_id
+        })
+        signed_txn = self.w3.eth.account.sign_transaction(transaction, self.account.key)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+        tx_receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+        return tx_receipt['transactionHash'].hex()
