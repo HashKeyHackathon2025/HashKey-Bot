@@ -13,8 +13,11 @@ from telegram.ext import (
     filters
 )
 
+from provider import Web3Provider
+
 from dotenv import load_dotenv
 import os
+
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
@@ -29,29 +32,38 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 임시 변수
-wallet_address = "0x7896Dfb8f8Ef9e36BA37ACB111AaE3D704dbc51Ed"
-token_name = "gyuseon"
-token_ticker = "GYU"
-balance = 616
+wallet_address = "0x3ff0908E1891BE439658ca15387C000D5c7921C1"
+wallet_HSK_balance = 0.0
+token_address = "0xba946A82D6c13A9DE94551feFDc1E05F92c6aF8d"
+token_name = "Test Wrapped HSK"
+token_ticker = "WHSK"
+token_price = 1.0
+token_market_cap = "120,000,000"
+token_24h_volume = "40,000,237"
+send_token_amount = 1.0
+gas_fee = 0.00
+token_balance = 10
 token_amount = 0
-tx_hash = "0xsendTokenHash"
-weth_amount = 0.00000
-bridge_tx_hash = "0xbridgeHash"
+wallet_tx_hash = "0x656710Bd0B06D5D6836816c961CF984BeCa4f554"
+weth_balance = 20.0
+weth_amount = 10.0
+bridge_tx_hash = "0x8bddb64ec9bfcd9a8538b939c944d3ffdb5be058ad82d710f10fbbdebe8e2c50"
 
 # 안내 문구
 WELCOME_TEXT = """Welcome to KeyBot {username}!
 
-I've created a wallet address for your convenient trading: 
+I've created a wallet address for your convenient trading:\n
 <code>{wallet_address}</code>
 
-First, register your EOA with the /register function.
+First, register your EOA with the
+/register function.
 
-──────────────────
+────────────────
 - /trading Try using this feature. You can trade on Hashkey and Ethereum mainnet.
 - /wallet Click this button to check the dollar value of all tokens in your current wallet, HSK balance, current gas fees, and more.
 - /bridge Bring your assets from Ethereum to the Hashkey chain through this menu.
 - /chain Click this button and choose the chain you want to trade on.
-──────────────────
+────────────────
 
 Now click the /trading button and try using KeyBot!
 """
@@ -68,11 +80,11 @@ screaming = False
 # 트레이딩 텍스트
 TRADING_TEXT = "Starting trading on {chain_name}!"
 FIRST_TRADING = """🔄 Trading\n
-1️⃣ My wallet address:
-2️⃣ Wallet balance:
-3️⃣ HSK balance:
-4️⃣ Gas fee:
-5️⃣ Mainnet: Hashkey Chain
+1️⃣ My wallet address: """ + wallet_address + """
+2️⃣ Wallet balance: """ + str(token_balance) + """ HSK
+3️⃣ HSK balance: """ + str(token_balance) + """ HSK
+4️⃣ Gas fee: """ + str(gas_fee) + """ HSK (&lt; 0.1 Gwei)
+5️⃣ Mainnet: <a href="https://global.hashkey.com/en-US/">Hashkey Chain</a>\n
 ⛓️ <a href="https://hashkey.blockscout.com/">Explorer</a> | ⛓️ <a href="https://debank.com/">DeBank</a>
 
 """
@@ -82,12 +94,12 @@ Please enter the contract address of the token you want to purchase.
 SELL_TRADING = """
 Please enter the contract address of the token you want to sell.
 """
-SECOND_TRADING = """Token Name: {token_name}
-Token Ticker: {token_ticker}
+SECOND_TRADING = """Token Name: """ + token_name + """
+Token Ticker: """ + token_ticker + """
 
-1️⃣ Token Price: 
-2️⃣ Market Cap:
-3️⃣ 24-hour Trading Volume:
+1️⃣ Token Price: """ + str(token_price) + """ HSK
+2️⃣ Market Cap: """ + token_market_cap + """ HSK
+3️⃣ 24-hour Trading Volume: """ + token_24h_volume + """ HSK
 
 ⛓️ DEX Screener | ⛓️ Gecko Terminal
 
@@ -106,10 +118,10 @@ HSK_10_BUTTON = "10 HSK"
 HSK_100_BUTTON = "100 HSK"
 HSK_1000_BUTTON = "1,000 HSK"
 MAX_AMOUNT_BUTTON = "Set maximum amount"
-SET_MAX_AMOUNT_BUTTON = "Maximum amount: 616 HSK"
+SET_MAX_AMOUNT_BUTTON = "Maximum amount: " + str(token_balance) + " HSK"
 INPUT_TRADING_AMOUNT_BUTTON = "Manual entry:"
 INPUT_SLIPPAGE_BUTTON = "✅ Slippage setting: 0.5%"
-COMPLETE_TRADING_BUTTON = "✅ Setup Complete"
+COMPLETE_TRADING_BUTTON = "✅ Trading Setup Complete"
 
 # 트레이딩 인라인 키보드 구성
 FIRST_TRADING_MARKUP = InlineKeyboardMarkup([
@@ -149,13 +161,13 @@ CHAIN_MARKUP = InlineKeyboardMarkup([
 
 # 지갑 설정 텍스트
 WALLET_TEXT = """👛 Wallet Settings\n
-1️⃣ Wallet Address:
-2️⃣ HSK balance:\n
+1️⃣ Wallet Address: <code>""" + str(wallet_address) + """</code>
+2️⃣ HSK balance: """ + str(wallet_HSK_balance) + """\n
 ⛓️ <a href="https://hashkey.blockscout.com/">Connect Explorer</a>
 ⛓️ <a href="https://debank.com/">Connect DeBank</a>
 
 """
-SEND_TOKEN = """🔄 Token Transfer
+SEND_TOKEN = """🔄 Claim Token
 Transfer HSK from the wallet created by KeyBot to another wallet.
 """
 COMPLETE_SEND_TOKEN = """Transferred {token_amount} HSK to {wallet_address}!\n
@@ -164,7 +176,7 @@ Transaction Hash:
 """
 
 # 지갑 설정 > 버튼
-SEND_TOKEN_BUTTON = "🔄 Token Transfer"
+SEND_TOKEN_BUTTON = "🔄 Claim Token"
 
 INFO_WALLET_ADDRESS_BUTTON = "1️⃣ Enter wallet address to transfer HSK"
 INPUT_WALLET_ADDRESS_BUTTON = "Please enter your wallet address::"
@@ -195,7 +207,7 @@ SEND_TOKEN_MARKUP = InlineKeyboardMarkup([
 # 브릿지 텍스트
 BRIDGE_TEXT = "🔄 Transfer your assets from Ethereum mainnet to Hashkey chain mainnet."
 COMPLETE_BRIDGE = """
-{token_amount} WETH has been transferred from Ethereum mainnet to Hashkey mainnet!\n
+{weth_amount} WETH has been transferred from Ethereum mainnet to Hashkey mainnet!\n
 
 Transaction Hash:
 {bridge_tx_hash}
@@ -207,13 +219,13 @@ SET_FROM_MAINNET_BUTTON = "✅ Ethereum"
 INFO_TO_MAINNET_BUTTON = "2️⃣ Set up destination mainnet"
 SET_TO_MAINNET_BUTTON = "✅ Hashkey Chain"
 INFO_SELECT_ASSET_BUTTON = "3️⃣ Select asset"
-SET_ASSET_BUTTON = "WETH"
-INFO_ASSET_BALANCE_BUTTON = "{weth_amount} WETH available"
-WETH_25PER_BUTTON = "25%"
-WETH_50PER_BUTTON = "50%"
-WETH_75PER_BUTTON = "75%"
-WETH_100PER_BUTTON = "100%"
-INPUT_WETH_PER_BUTTON = "Manual entry: "
+SET_ASSET_BUTTON = "✅ WETH"
+INFO_ASSET_BALANCE_BUTTON = str(weth_balance) + " WETH available"
+WETH_25PER_BUTTON = " 25% "
+WETH_50PER_BUTTON = " 50% "
+WETH_75PER_BUTTON = " 75% "
+WETH_100PER_BUTTON = " 100% "
+INPUT_WETH_PER_BUTTON = " Manual entry: "
 COMPLETE_BRIDGE_BUTTON = "✅ Bridge Setup Complete"
 
 # 브릿지 설정 인라인 키보드 구성
@@ -243,16 +255,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 유저 이름 (없으면 'User'로 대체)
     username = update.effective_user.first_name or "User"
     
-    # 만약 start 명령어를 그룹에서 썼을 경우 update.message가 없을 수 있으므로 체크
     if not update.message:
         return
-    
-    # ReplyKeyboardMarkup로 하단에 버튼을 띄울 수 있음
+
+    # 1️⃣ 유저 지갑 주소 가져오기
+    telegram_id = update.effective_user.id
+    try:
+        wallet_address = provider.account_manager.get_account_address(telegram_id)
+    except Exception as e:
+        tx_hash = provider.account_manager.create_account(telegram_id)
+        if(tx_hash) :
+            wallet_address = provider.account_manager.get_account_address(telegram_id)
+
+    # 2️⃣ 버튼 UI 세팅
     reply_markup = ReplyKeyboardMarkup(
         BOTTOM_KEYBOARD,
-        resize_keyboard=True,     # 사용자의 화면 크기에 맞춰 버튼 크기 조절
-        one_time_keyboard=False   # True면 한 번 누르고 나면 키보드가 사라짐
+        resize_keyboard=True,
+        one_time_keyboard=False
     )
+
+    # 3️⃣ 안내 문구 생성
+    text_to_send = WELCOME_TEXT.format(username=username, wallet_address=wallet_address)
+
+    with open("./images/bot_start.png", "rb") as img:
+        await update.message.reply_photo(
+            photo=img,
+            caption=text_to_send,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup
+        )
 
     # 안내 문구에 사용자 이름 삽입
     text_to_send = WELCOME_TEXT.format(username=username, wallet_address=wallet_address)
@@ -269,6 +300,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 등록할 지갑 주소를 입력하라는 프롬프트 메시지 전송
     await update.message.reply_text("Please enter your wallet address to register:")
+
+    try:
+        provider = context.bot_data["web3_provider"]
+        telegram_user_id = update.effective_user.id
+        tx = provider.account_manager.set_account_user(telegram_user_id, context.user_data.get("user_EOA"))
+        registered_address = provider.get_account_user(wallet_address)
+        await update.message.reply_text(f"✅ Wallet address registered!\n\n<code>{registered_address}</code>\n\nTxHash: {tx}")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to register address:\n<code>{str(e)}</code>")
+
     # 이후 사용자의 입력을 기다리기 위한 플래그 설정
     context.user_data["waiting_for_register"] = True
 
@@ -386,10 +427,10 @@ async def trading_buy_amount_callback_handler(update: Update, context: ContextTy
         elif data == HSK_1000_BUTTON:
             numeric_value = 1000
         elif data == MAX_AMOUNT_BUTTON:
-            numeric_value = balance  # 미리 정의된 balance 변수 사용
+            numeric_value = token_balance  # 미리 정의된 balance 변수 사용
         # 단일 변수에 숫자값 저장
         context.user_data["trading_buy_amount"] = str(numeric_value)
-        updated_markup = get_trading_buy_amount_markup(data, custom_slippage=context.user_data.get("trading_slippage"))
+        updated_markup = get_trading_buy_amount_markup(data)
         await query.edit_message_reply_markup(reply_markup=updated_markup)
     else:
         # 기타 경우는 별도 처리 (필요하면)
@@ -398,13 +439,137 @@ async def trading_buy_amount_callback_handler(update: Update, context: ContextTy
 async def complete_buy_trading_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # COMPLETE_BUY_TRADING 텍스트에 token_name과 amount 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_BUY_TRADING.format(trading_buy_amount=context.user_data["trading_buy_amount"],token_name=token_name, amount=0.0)
+
+    try:
+        telegram_id = query.from_user.id
+        pair_address = context.user_data.get("pair_address", token_address)
+        output_amount = float(context.user_data["trading_buy_amount"])
+        slippage_percent = float(context.user_data.get("trading_slippage", "0.5"))
+
+        output_amount_wei = Web3.to_wei(output_amount, "ether")
+        slippage_basis = int(slippage_percent * 100)  # 예: 0.5% → 50
+
+        tx = provider.dex_manager.swap_tokens_for_exact_tokens(
+            telegram_id=telegram_id,
+            pair_address=pair_address,
+            output_amount=output_amount_wei,
+            slippage_percent=slippage_basis
+        )
+
+        complete_text = COMPLETE_BUY_TRADING.format(
+            trading_buy_amount=context.user_data["trading_buy_amount"],
+            token_name=token_name,
+            amount=output_amount
+        )
+
+    except Exception as e:
+        complete_text = f"❌ Buy failed:\n<code>{str(e)}</code>"
+
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
         parse_mode=ParseMode.HTML
     )
+
+
+# 인라인 키보드 생성 함수 (판매 수량 선택용)
+def get_trading_sell_amount_markup(selected: str, custom_input: str = None, custom_slippage: str = None):
+    HSK_10_text = f"✅ {HSK_10_BUTTON}" if selected == HSK_10_BUTTON else HSK_10_BUTTON
+    HSK_100_text = f"✅ {HSK_100_BUTTON}" if selected == HSK_100_BUTTON else HSK_100_BUTTON
+    HSK_1000_text = f"✅ {HSK_1000_BUTTON}" if selected == HSK_1000_BUTTON else HSK_1000_BUTTON
+    max_amount_text = f"✅ {SET_MAX_AMOUNT_BUTTON}" if selected == MAX_AMOUNT_BUTTON else MAX_AMOUNT_BUTTON
+    if custom_input:
+        input_trading_amount_text = f"✅ {INPUT_TRADING_AMOUNT_BUTTON} {custom_input} HSK"
+    else:
+        input_trading_amount_text = f"✅ {INPUT_TRADING_AMOUNT_BUTTON}" if selected == INPUT_TRADING_AMOUNT_BUTTON else INPUT_TRADING_AMOUNT_BUTTON
+    if custom_slippage:
+        slippage_text = f"✅ 슬리피지 설정: {custom_slippage}%"
+    else:
+        slippage_text = INPUT_SLIPPAGE_BUTTON
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(INFO_SELL_AMOUNT_BUTTON, callback_data=INFO_SELL_AMOUNT_BUTTON)],
+        [InlineKeyboardButton(HSK_10_text, callback_data=HSK_10_BUTTON),
+         InlineKeyboardButton(HSK_100_text, callback_data=HSK_100_BUTTON),
+         InlineKeyboardButton(HSK_1000_text, callback_data=HSK_1000_BUTTON)],
+        [InlineKeyboardButton(max_amount_text, callback_data=MAX_AMOUNT_BUTTON),
+         InlineKeyboardButton(input_trading_amount_text, callback_data=INPUT_TRADING_AMOUNT_BUTTON)],
+        [InlineKeyboardButton(slippage_text, callback_data=INPUT_SLIPPAGE_BUTTON)],
+        [InlineKeyboardButton(COMPLETE_TRADING_BUTTON, callback_data=COMPLETE_TRADING_BUTTON)],
+    ])
+
+# 선택한 token amount에 체크
+async def trading_sell_amount_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == INPUT_TRADING_AMOUNT_BUTTON:
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text="Please enter the amount of HSK to sell:",
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_sell_trading_amount_input"] = True
+        context.user_data["trading_sell_prompt_message_id"] = msg.message_id
+    elif data == INPUT_SLIPPAGE_BUTTON:
+        msg = await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=SET_SLIPPAGE,
+            parse_mode=ParseMode.HTML
+        )
+        context.user_data["waiting_for_sell_slippage_input"] = True
+        context.user_data["slippage_prompt_message_id"] = msg.message_id
+    elif data in [HSK_10_BUTTON, HSK_100_BUTTON, HSK_1000_BUTTON, MAX_AMOUNT_BUTTON]:
+        if data == HSK_10_BUTTON:
+            numeric_value = 10
+        elif data == HSK_100_BUTTON:
+            numeric_value = 100
+        elif data == HSK_1000_BUTTON:
+            numeric_value = 1000
+        elif data == MAX_AMOUNT_BUTTON:
+            numeric_value = token_balance
+        context.user_data["trading_sell_amount"] = str(numeric_value)
+        updated_markup = get_trading_sell_amount_markup(data)
+        await query.edit_message_reply_markup(reply_markup=updated_markup)
+
+
+async def complete_sell_trading_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        telegram_id = query.from_user.id
+        pair_address = context.user_data.get("pair_address", token_address)
+        input_amount = float(context.user_data["trading_sell_amount"])
+        slippage_percent = float(context.user_data.get("trading_slippage", "0.5"))
+
+        input_amount_wei = Web3.to_wei(input_amount, "ether")
+        slippage_basis = int(slippage_percent * 100)
+
+        tx = provider.dex_manager.swap_exact_tokens_for_tokens(
+            telegram_id=telegram_id,
+            pair_address=pair_address,
+            input_amount=input_amount_wei,
+            slippage_percent=slippage_basis
+        )
+
+        complete_text = COMPLETE_SELL_TRADING.format(
+            amount=input_amount,
+            token_name=token_name,
+            trading_sell_amount="?"  # 실제 받은 토큰 수량 (선택적으로 계산 가능)
+        )
+
+    except Exception as e:
+        complete_text = f"❌ Sell failed:\n<code>{str(e)}</code>"
+
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=complete_text,
+        parse_mode=ParseMode.HTML
+    )
+
+
+
 
 async def bridge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent_msg = await update.message.reply_text(
@@ -475,8 +640,40 @@ async def bridge_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 async def complete_bridge_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # COMPLETE_BRIDGE 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_BRIDGE.format(token_amount=weth_amount,bridge_tx_hash=bridge_tx_hash)
+
+    try:
+        # 사용자 입력값 사용
+        telegram_id = query.from_user.id
+        token_address = context.user_data["bridge_token_address"]        # 예: "0x..." (WETH)
+        target_chain_address = context.user_data["user_EOA"]             # 유저가 등록한 EOA
+        amount_eth = context.user_data["WETH_amount"]                    # 예: "1.2" (string)
+        bridge_connector = context.user_data["bridge_connector"]         # 예: 저장된 BridgeConnector
+        bridge_address = context.user_data["bridge_contract"]            # 예: 저장된 Bridge
+
+        # amount를 wei 단위로 변환
+        amount_wei = Web3.to_wei(float(amount_eth), "ether")
+
+        # executeBridgeCall 호출
+        tx_hash = provider.bridge_manager.execute_bridge_call(
+            telegram_id=telegram_id,
+            token_address=token_address,
+            target_chain_address=target_chain_address,
+            amount=amount_wei,
+            bridge_connector_address=bridge_connector,
+            bridge_address=bridge_address
+        )
+
+        # 성공 메시지
+        complete_text = COMPLETE_BRIDGE.format(
+            token_amount=amount_eth,
+            bridge_tx_hash=tx_hash
+        )
+
+    except KeyError as e:
+        complete_text = f"❌ Missing user input: {e}"
+    except Exception as e:
+        complete_text = f"❌ Bridge failed:\n<code>{str(e)}</code>"
+
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
@@ -512,7 +709,7 @@ def get_wallet_and_token_per_markup(selected: str, custom_input: str = None, cus
     HSK_75per_text = f"✅ {HSK_75PER_BUTTON}" if selected == HSK_75PER_BUTTON else HSK_75PER_BUTTON
     HSK_100per_text = f"✅ {HSK_100PER_BUTTON}" if selected == HSK_100PER_BUTTON else HSK_100PER_BUTTON
     if custom_input:
-        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} %"
+        input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON} {custom_input} HSK"
     else:
         input_HSK_per_text = f"✅ {INPUT_HSK_PER_BUTTON}" if selected == INPUT_HSK_PER_BUTTON else INPUT_HSK_PER_BUTTON
     if custom_wallet:
@@ -575,7 +772,7 @@ async def complete_send_token_handler(update: Update, context: ContextTypes.DEFA
     query = update.callback_query
     await query.answer()
     # COMPLETE_SEND_TOKEN 텍스트에 wallet_address, token_amount, tx_hash 값을 대입하여 출력합니다.
-    complete_text = COMPLETE_SEND_TOKEN.format(wallet_address=context.user_data["send_wallet_address"],token_amount=token_amount, tx_hash=tx_hash)
+    complete_text = COMPLETE_SEND_TOKEN.format(wallet_address=context.user_data["send_wallet_address"],token_amount=context.user_data["send_token_per"], tx_hash=wallet_tx_hash)
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=complete_text,
@@ -662,9 +859,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trading_msg_id = context.user_data.get("trading_message_id")
         if trading_msg_id:
             new_markup = get_trading_buy_amount_markup(
-                INPUT_TRADING_AMOUNT_BUTTON,
+                "",
                 custom_input=user_text,
-                custom_slippage=context.user_data.get("trading_slippage")
+                custom_slippage=""
             )
             try:
                 await context.bot.edit_message_reply_markup(
@@ -687,8 +884,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trading_msg_id = context.user_data.get("trading_message_id")
         if trading_msg_id:
             new_markup = get_trading_buy_amount_markup(
-                INPUT_TRADING_AMOUNT_BUTTON,
-                custom_input=context.user_data.get("trading_buy_amount"),
+                MAX_AMOUNT_BUTTON,
+                custom_input="",
                 custom_slippage=user_text
             )
             try:
@@ -702,6 +899,57 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_slippage_input"] = False
         return
     
+    # 트레이딩 판매 수량 직접 입력 처리
+    if context.user_data.get("waiting_for_sell_trading_amount_input", False):
+        # 직접 입력한 값을 저장 (단일 변수로 관리)
+        context.user_data["trading_sell_amount"] = user_text  # 예: "3.2"
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        trading_msg_id = context.user_data.get("trading_message_id")
+        if trading_msg_id:
+            new_markup = get_trading_sell_amount_markup(
+                "",
+                custom_input=user_text,
+                custom_slippage=""
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=trading_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_sell_trading_amount_input"] = False
+        return
+
+    # 슬리피지 직접 입력 처리
+    if context.user_data.get("waiting_for_sell_slippage_input", False):
+        context.user_data["sell_trading_slippage"] = user_text  # 슬리피지 값 저장 (예: "1.0")
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        trading_msg_id = context.user_data.get("trading_message_id")
+        if trading_msg_id:
+            new_markup = get_trading_sell_amount_markup(
+                MAX_AMOUNT_BUTTON,
+                custom_input="",
+                custom_slippage=user_text
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=trading_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_sell_slippage_input"] = False
+        return
+    
     # 지갑 주소 직접 입력 처리
     if context.user_data.get("waiting_for_wallet_address_input", False):
         context.user_data["send_wallet_address"] = user_text  # 지갑 주소 값 저장 (예: "0x00000")
@@ -712,8 +960,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         send_token_msg_id = context.user_data.get("send_token_message_id")
         if send_token_msg_id:
             new_markup = get_wallet_and_token_per_markup(
-                INPUT_WALLET_ADDRESS_BUTTON,
-                custom_input=context.user_data.get("send_token_per"),
+                "",
+                "",
                 custom_wallet=user_text
             )
             try:
@@ -727,9 +975,34 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_wallet_address_input"] = False
         return
     
+    # 전송 토큰 비율 직접 입력 처리
+    if context.user_data.get("waiting_for_send_token_amount_input", False):
+        context.user_data["send_token_per"] = user_text
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"메시지 삭제 실패: {e}")
+        send_token_msg_id = context.user_data.get("send_token_message_id")
+        if send_token_msg_id:
+            new_markup = get_wallet_and_token_per_markup(
+                INPUT_HSK_PER_BUTTON,
+                custom_input=user_text,
+                custom_wallet=context.user_data.get("send_wallet_address")
+            )
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat.id,
+                    message_id=send_token_msg_id,
+                    reply_markup=new_markup
+                )
+            except Exception as e:
+                logger.error(f"인라인 키보드 업데이트 실패: {e}")
+        context.user_data["waiting_for_send_token_amount_input"] = False
+        return
+    
     # 만약 "Buy 모드" 상태라면, 입력값 검증 후 SECOND_TRADING 출력
     if context.user_data.get("waiting_for_buy_input", False):
-        if user_text == "test":
+        if user_text == token_address:
             if "trading_buy_amount" not in context.user_data:
                 context.user_data["trading_buy_amount"] = HSK_10_BUTTON
             sent_trading = await update.message.reply_text(
@@ -744,7 +1017,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_buy_input"] = False
         return
     elif context.user_data.get("waiting_for_sell_input", False):
-        if user_text == "test":
+        if user_text == token_address:
             sent_trading = await update.message.reply_text(
                 text=SECOND_TRADING,
                 parse_mode=ParseMode.HTML,
@@ -780,8 +1053,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def main():
+    global provider, provider2
+
     # 토큰을 본인의 봇 토큰으로 변경하세요.
     app = ApplicationBuilder().token(botfather_token).build()
+
+    # provider 생성
+    HASHKEY_RPC_URL = os.getenv("HASHKEY_RPC_URL")
+    SEPOLIA_RPC_URL = os.getenv("SEPOLIA_RPC_URL")
+    PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+
+    provider = Web3Provider(rpc_url=HASHKEY_RPC_URL, private_key=PRIVATE_KEY)
+    provider2 = Web3Provider(rpc_url=SEPOLIA_RPC_URL, private_key=PRIVATE_KEY)
 
     # 핸들러 등록
     app.add_handler(CommandHandler("start", start))
@@ -818,6 +1101,11 @@ async def main():
     app.add_handler(CallbackQueryHandler(trading_buy_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
     # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_BUY_TRADING 출력
     app.add_handler(CallbackQueryHandler(complete_buy_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
+
+    # 트레이딩 - 판매할 HSK 수량 선택 콜백 처리
+    app.add_handler(CallbackQueryHandler(trading_sell_amount_callback_handler, pattern=f'^({HSK_10_BUTTON}|{HSK_100_BUTTON}|{HSK_1000_BUTTON}|{MAX_AMOUNT_BUTTON}|{INPUT_TRADING_AMOUNT_BUTTON}|{INPUT_SLIPPAGE_BUTTON})$'))
+    # COMPLETE_TRADING_BUTTON 처리: 버튼을 누르면 COMPLETE_SELL_TRADING 출력
+    app.add_handler(CallbackQueryHandler(complete_sell_trading_handler, pattern=f'^{COMPLETE_TRADING_BUTTON}$'))
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 

@@ -5,10 +5,12 @@ from data.contracts import CONTRACTS
 
 HASHKEY_CORE_CONTRACT_ADDRESS = CONTRACTS["HASHKEY_CORE"]
 SEPOLIA_CORE_CONTRACT_ADDRESS = CONTRACTS["SEPOLIA_CORE"]
+HASHKEY_ACCOUNT_IMPL_CONTRACT_ADDRESS = CONTRACTS["SEPOLIA_CORE"]
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 CORE_ABI_PATH = os.path.join(PROJECT_ROOT, "abi", "core.json")
+ACCOUNT_IMPL_ABI_PATH = os.path.join(PROJECT_ROOT, "abi", "accountImpl.json")
 
 class AccountManager:
     def __init__(self, provider):
@@ -42,3 +44,8 @@ class AccountManager:
     def set_account_user(self, telegram_id: int, address: str) -> str :
         contract = self.provider.get_contract(self.core_contract_address, CORE_ABI_PATH)
         return self._send_transaction(contract.functions.setAccountUser, telegram_id, address)
+    
+    # EOA 조회
+    def get_account_user(self, user_address: str) -> str :
+        contract = self.provider.get_contract(user_address, ACCOUNT_IMPL_ABI_PATH)
+        return contract.functions.user()
