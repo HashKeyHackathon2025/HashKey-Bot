@@ -18,27 +18,8 @@ class AccountManager:
 
         # hashkey or sepolia core address
         self.core_contract_address = HASHKEY_CORE_CONTRACT_ADDRESS if provider.network_type == "hashkey" else SEPOLIA_CORE_CONTRACT_ADDRESS
-        
-    def create_account(self, telegram_id: int) -> str:
-        my_address = Web3.to_checksum_address(self.w3.eth.account.from_key(self.private_key).address)
-        nonce = self.w3.eth.get_transaction_count(my_address)
-        
-        contract = self.provider.get_contract(self.core_contract_address, CORE_ABI_PATH)
-        
-        transaction = contract.functions.createAccount(telegram_id).build_transaction({
-            'from': my_address,
-            'gas': contract.functions.createAccount(telegram_id).estimate_gas({'from': my_address}),
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': nonce,
-            'chainId': self.w3.eth.chain_id
-        })
-
-        signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
-
-        tx_receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-        return tx_receipt['transactionHash'].hex()
-    
+            
+    # 지갑 주소 반환
     def get_account_address(self, telegram_id: int) -> str:
         my_address = Web3.to_checksum_address(self.w3.eth.account.from_key(self.private_key).address)
         contract = self.provider.get_contract(self.core_contract_address, CORE_ABI_PATH)
@@ -51,3 +32,13 @@ class AccountManager:
             raise Exception("유효하지 않은 이더리움 주소입니다")
             
         return address
+    
+    # 지갑 생성
+    def create_account(self, telegram_id: int) -> str:
+        contract = self.provider.get_contract(self.core_contract_address, CORE_ABI_PATH)
+        return self.provider.send_transaction(contract.functions.createAccount, telegram_id)
+    
+    # EOA 등록
+    def set_account_user(self, telegram_id: int, address: str) -> str :
+        contract = self.provider.get_contract(self.core_contract_address, CORE_ABI_PATH)
+        return self._send_transaction(contract.functions.setAccountUser, telegram_id, address)
